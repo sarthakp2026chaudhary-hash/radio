@@ -11,6 +11,7 @@ import { NextSongPreview } from "@/components/radio/NextSongPreview";
 import { RecommendationCircles } from "@/components/radio/RecommendationCircles";
 import { ReactButton } from "@/components/radio/ReactButton";
 import { useReactionChannel } from "@/hooks/useReactionChannel";
+import { useColorScheme } from "@/hooks/useColorScheme";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface User {
@@ -63,6 +64,9 @@ export default function RadioPage() {
 
   // Reaction channel for sending stickers
   const { sendSticker } = useReactionChannel();
+
+  // Color scheme sync (receives changes from admin)
+  useColorScheme();
 
   const handleLogout = async () => {
     const supabase = createClient();

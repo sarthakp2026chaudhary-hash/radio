@@ -9,6 +9,8 @@ import { Button } from "@/components/ui";
 import { Dropdown, DropdownItem, DropdownDivider } from "@/components/ui/dropdown";
 import { NotificationStack, type Notification } from "@/components/ui/notification-stack";
 import { useReactionChannel, type StickerPayload } from "@/hooks/useReactionChannel";
+import { ColorSchemePicker } from "@/components/admin/ColorSchemePicker";
+import { useColorScheme } from "@/hooks/useColorScheme";
 
 interface User {
   id: number;
@@ -58,6 +60,9 @@ function AdminContent() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const playbackChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const votesChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Color scheme sync (admin can change, changes broadcast to all)
+  useColorScheme();
 
   // Listen for sticker reactions from listeners
   const handleStickerReceived = useCallback((payload: StickerPayload) => {
@@ -704,6 +709,11 @@ function AdminContent() {
                       <span className="text-text-muted">Offline</span>
                     )}
                   </p>
+                </div>
+
+                {/* Color Scheme Picker */}
+                <div className="pt-4 border-t border-surface-3">
+                  <ColorSchemePicker />
                 </div>
               </div>
             </div>
