@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getSchemeById, applyColorScheme, COLOR_SCHEMES } from "@/lib/color-schemes";
-import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export function useColorScheme() {
   const [currentSchemeId, setCurrentSchemeId] = useState<string>("ember");
-  const channelRef = useRef<RealtimeChannel | null>(null);
 
   // Fetch initial scheme and subscribe to changes
   useEffect(() => {
     const supabase = createClient();
+    let isMounted = true;
 
     async function init() {
       // Fetch current scheme
@@ -21,6 +20,8 @@ export function useColorScheme() {
         .eq("id", 1)
         .single() as { data: { color_scheme: string | null } | null };
 
+      if (!isMounted) return;
+
       const schemeId = data?.color_scheme || "ember";
       setCurrentSchemeId(schemeId);
       applyColorScheme(getSchemeById(schemeId));
@@ -28,32 +29,29 @@ export function useColorScheme() {
 
     init();
 
-    // Subscribe to color scheme changes
-    if (!channelRef.current) {
-      channelRef.current = supabase
-        .channel("color-scheme-sync")
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "playback_state",
-            filter: "id=eq.1",
-          },
-          (payload) => {
-            const newSchemeId = (payload.new as { color_scheme?: string }).color_scheme || "ember";
-            setCurrentSchemeId(newSchemeId);
-            applyColorScheme(getSchemeById(newSchemeId));
-          }
-        )
-        .subscribe();
-    }
+    // Subscribe to color scheme changes with unique channel name
+    const channel = supabase
+      .channel(`color-scheme-${Date.now()}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "playback_state",
+          filter: "id=eq.1",
+        },
+        (payload) => {
+          if (!isMounted) return;
+          const newSchemeId = (payload.new as { color_scheme?: string }).color_scheme || "ember";
+          setCurrentSchemeId(newSchemeId);
+          applyColorScheme(getSchemeById(newSchemeId));
+        }
+      )
+      .subscribe();
 
     return () => {
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
-        channelRef.current = null;
-      }
+      isMounted = false;
+      channel.unsubscribe();
     };
   }, []);
 
