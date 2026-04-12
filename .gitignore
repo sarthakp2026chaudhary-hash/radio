@@ -54,3 +54,9 @@ gif/
 
 # original audio (use public/audio/ instead)
 You_re_my_bestest_friend.mp3
+
+# PWA generated files (regenerated on build)
+public/sw.js
+public/workbox-*.js
+public/sw.js.map
+public/workbox-*.js.map
