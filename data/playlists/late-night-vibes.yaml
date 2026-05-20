@@ -1,0 +1,31 @@
+# Late Night Vibes Playlist
+# Chill electronic and synth-pop tracks for late night listening
+
+name: Late Night Vibes
+description: Chill tracks for late night sessions
+cover_url: null
+is_public: true
+
+# Tracks referenced by preferred identifier
+# Resolution order: isrc > spotify_uri > musicbrainz_id > title+artist
+tracks:
+  # The Weeknd - Blinding Lights (by ISRC)
+  - isrc: USUG12000420
+
+  # Daft Punk ft. Pharrell - Get Lucky (by Spotify URI)
+  - spotify_uri: spotify:track:69kOkLUCkxIZYexIgSG8rq
+
+  # The Weeknd ft. Daft Punk - I Feel It Coming
+  - isrc: USUG11601172
+
+  # Billie Eilish - everything i wanted
+  - spotify_uri: spotify:track:3ZCTVFBt2Brf31RLEnCkWJ
+
+  # Daft Punk ft. Julian Casablancas - Instant Crush
+  - isrc: USUG11300906
+
+  # The Weeknd - Save Your Tears
+  - isrc: USUG12001832
+
+  # Daft Punk - One More Time
+  - spotify_uri: spotify:track:0DiWol3AO6WpXZgp0goxAV

@@ -1,0 +1,18 @@
+# Main Radio Channel Configuration
+
+name: Main Radio
+slug: main
+description: The main radio channel featuring a mix of electronic and pop music
+cover_url: null
+is_public: true
+
+# Default playlist when no schedule is active
+default_playlist: late-night-vibes
+
+# Schedule configuration (optional)
+schedule:
+  - name: Late Night
+    playlist: late-night-vibes
+    days: [0, 1, 2, 3, 4, 5, 6]  # Every day
+    start_time: "22:00"
+    end_time: "06:00"

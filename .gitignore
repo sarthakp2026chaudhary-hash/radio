@@ -49,6 +49,7 @@ next-env.d.ts
 # temp/test files
 *.test
 test*.txt
+*-claude-code-v*.txt
 supabase/.temp/
 gif/
 

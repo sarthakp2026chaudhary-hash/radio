@@ -1,0 +1,60 @@
+# Artists Index
+# All artists referenced by tracks in this library
+
+artists:
+  - name: "The Weeknd"
+    slug: the-weeknd
+    identifiers:
+      musicbrainz_id: c8b03190-306c-4120-bb0b-6f2ebfc06ea9
+      spotify_id: 1Xyo4u8uXC1ZmMpatF05PJ
+    image_url: https://i.scdn.co/image/ab6761610000e5eb214f3cf1cbe7139c1e26ffbb
+    genres:
+      - canadian pop
+      - r&b
+
+  - name: "Daft Punk"
+    slug: daft-punk
+    identifiers:
+      musicbrainz_id: 056e4f3e-d505-4dad-8ec1-d04f521cbb56
+      spotify_id: 4tZwfgrHOc3mvqYlEYSvVi
+    image_url: https://i.scdn.co/image/ab6761610000e5eb5f89e24c3c6e5b3abf393849
+    genres:
+      - french house
+      - electronic
+
+  - name: "Pharrell Williams"
+    slug: pharrell-williams
+    identifiers:
+      musicbrainz_id: 1f9df192-a621-4f54-8850-2c5373b7eac9
+      spotify_id: 2RdwBSPQiwcmiDo9kixcl8
+    genres:
+      - hip hop
+      - pop
+
+  - name: "Nile Rodgers"
+    slug: nile-rodgers
+    identifiers:
+      musicbrainz_id: b071c917-8eb8-43e5-9a7b-63e6fefec4c5
+      spotify_id: 3yDIp0kaq9EFKe07X1X2rz
+    genres:
+      - disco
+      - funk
+
+  - name: "Billie Eilish"
+    slug: billie-eilish
+    identifiers:
+      musicbrainz_id: f4abc0b5-3f7a-4eff-8f78-ac078c7c8062
+      spotify_id: 6qqNVTkY8uBg9cP3Jd7DAH
+    image_url: https://i.scdn.co/image/ab6761610000e5ebd8b9980db67272cb4d2c3daf
+    genres:
+      - art pop
+      - electropop
+
+  - name: "Julian Casablancas"
+    slug: julian-casablancas
+    identifiers:
+      musicbrainz_id: a2f7d9be-2c66-4804-80d2-4a8ef3d4d4f5
+      spotify_id: 1rAv4GgzJWsKjUM5YMi6xE
+    genres:
+      - indie rock
+      - post-punk revival

@@ -1,0 +1,159 @@
+version: "2.0"
+format: "radio-music-library"
+description: |
+  Self-describing music library format for the Radio app.
+
+  Tracks are identified by multiple industry identifiers, not filenames.
+  Audio files are just one possible source - tracks can exist without local files.
+  This text data IS the source of truth; it survives schema changes and migrations.
+
+identity_priority:
+  - isrc           # Global recording ID (most authoritative)
+  - musicbrainz_id # Open database ID
+  - spotify_uri    # Platform-specific but widely available
+  - title_artist   # Fallback: title + primary artist name
+
+entities:
+  artist:
+    description: "A music artist, band, or creator"
+    identifiers:
+      - musicbrainz_id  # UUID from MusicBrainz
+      - spotify_id      # 22-char Spotify Artist ID
+    required:
+      - name            # Display name
+    optional:
+      - slug            # URL-safe identifier (auto-generated if omitted)
+      - bio             # Artist biography
+      - image_url       # Profile image URL
+      - genres          # Array of genre tags
+    example: |
+      - name: "The Weeknd"
+        slug: the-weeknd
+        identifiers:
+          musicbrainz_id: c8b03190-306c-4120-bb0b-6f2ebfc06ea9
+          spotify_id: 1Xyo4u8uXC1ZmMpatF05PJ
+        genres: [canadian pop, r&b]
+
+  track:
+    description: "A single audio recording"
+    identifiers:
+      - isrc                     # International Standard Recording Code
+      - musicbrainz_id           # MusicBrainz Recording ID
+      - spotify_uri              # spotify:track:xxxx format
+    required:
+      - title                    # Track title
+      - artists                  # Array of artist references with roles
+    optional:
+      - album                    # Album name
+      - track_number             # Position on album
+      - disc_number              # Disc number (default: 1)
+      - release_date             # YYYY-MM-DD format
+      - genre                    # Primary genre
+      - bpm                      # Beats per minute
+      - key                      # Musical key (C, Am, F#m, etc.)
+      - explicit                 # Boolean for explicit content
+      - sources                  # Map of source type to location/URI
+    derived:
+      - duration_ms              # Extracted from audio file
+      - file_size                # Extracted from audio file
+    sources:
+      - local                    # Path to local MP3 file
+      - spotify                  # Spotify URI for streaming
+      - youtube                  # YouTube video ID
+      - apple_music              # Apple Music ID
+    artist_roles:
+      - primary                  # Main performing artist
+      - featured                 # Featured artist (ft.)
+      - producer                 # Producer credit
+      - remixer                  # Remix artist
+    example: |
+      - title: "Blinding Lights"
+        identifiers:
+          isrc: USUG12000420
+          spotify_uri: spotify:track:0VjIjW6FFFbBbNlL
+        artists:
+          - name: The Weeknd
+            role: primary
+        album: After Hours
+        track_number: 9
+        release_date: 2020-03-20
+        genre: synth-pop
+        bpm: 171
+        sources:
+          local: music/the-weeknd/blinding-lights.mp3
+          spotify: spotify:track:0VjIjW6FFFbBbNlL
+          youtube: 4NRXx6U8ABQ
+
+  playlist:
+    description: "An ordered collection of tracks"
+    required:
+      - name                     # Playlist name
+      - tracks                   # Array of track references
+    optional:
+      - description              # Playlist description
+      - cover_url                # Cover image URL
+      - is_public                # Visibility (default: true)
+    track_reference:
+      description: |
+        Tracks in playlists are referenced by identifier, not filename.
+        Use the strongest available identifier. Resolution order:
+        1. isrc (if present)
+        2. spotify_uri (if present)
+        3. musicbrainz_id (if present)
+        4. title + artist (fallback)
+      examples:
+        - isrc: USUG12000420
+        - spotify_uri: "spotify:track:0VjIjW6FFFbBbNlL"
+        - title: "Blinding Lights"
+          artist: "The Weeknd"
+
+  channel:
+    description: "A radio channel configuration"
+    required:
+      - name                     # Channel name
+      - slug                     # URL-safe identifier
+    optional:
+      - description              # Channel description
+      - cover_url                # Channel artwork
+      - default_playlist         # Default playlist name/slug
+      - is_public                # Public visibility
+
+resolution:
+  description: |
+    How to resolve track references when seeding:
+
+    1. EXACT MATCH: If ISRC, MusicBrainz ID, or Spotify URI matches exactly,
+       that's the definitive track.
+
+    2. FUZZY MATCH: If only title + artist is provided:
+       - Normalize strings (lowercase, remove punctuation, trim suffixes)
+       - Calculate Levenshtein similarity
+       - Score = (title_score * 0.6) + (artist_score * 0.4)
+       - Accept if score > 90%, warn if 70-90%, skip if < 70%
+
+    3. DEDUPLICATION: Same track if ANY of these match:
+       - ISRC matches
+       - MusicBrainz Recording ID matches
+       - Spotify ID matches
+       - Title + primary artist + album + duration within 3s
+
+    4. DIFFERENT TRACKS even if title matches:
+       - Different ISRC (different recording)
+       - Different album (might be remix/live version)
+       - Duration differs by > 10s (different version)
+
+file_structure:
+  data/:
+    schema.yaml: "This file - format specification"
+    README.md: "Human-readable documentation"
+    artists/:
+      _index.yaml: "All artists (single file for small libraries)"
+      "{artist-slug}.yaml": "Individual artist files (optional, for large libraries)"
+    tracks/:
+      _index.yaml: "All tracks (single file for small libraries)"
+      by-artist/:
+        "{artist-slug}.yaml": "Tracks grouped by primary artist (optional)"
+    playlists/:
+      "{playlist-slug}.yaml": "One file per playlist"
+    channels/:
+      "{channel-slug}.yaml": "One file per channel"

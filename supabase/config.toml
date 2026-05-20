@@ -28,5 +28,5 @@ redirect_uri = "http://localhost:54321/auth/v1/callback"
 [storage]
 enabled = true
 
-[functions]
+[functions.sync-heartbeat]
 verify_jwt = false

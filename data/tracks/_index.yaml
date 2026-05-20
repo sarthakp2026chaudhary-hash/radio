@@ -1,0 +1,200 @@
+# Tracks Index
+# All tracks in this library with their industry identifiers
+
+tracks:
+  - title: "Blinding Lights"
+    identifiers:
+      isrc: USUG12000420
+      musicbrainz_id: 4be4f1d6-5f3a-4e4c-85f3-3a9b0a0b0a0b
+      spotify_uri: spotify:track:0VjIjW6FFFbBbNlL0e8hRt
+    artists:
+      - name: The Weeknd
+        role: primary
+    album: After Hours
+    track_number: 9
+    release_date: 2020-03-20
+    genre: synth-pop
+    bpm: 171
+    key: F#m
+    explicit: false
+    sources:
+      local: music/the-weeknd/blinding-lights.mp3
+      spotify: spotify:track:0VjIjW6FFFbBbNlL0e8hRt
+      youtube: 4NRXx6U8ABQ
+
+  - title: "Starboy"
+    identifiers:
+      isrc: USUG11601137
+      spotify_uri: spotify:track:7MXVkk9YMctZqd1Srtv4MB
+    artists:
+      - name: The Weeknd
+        role: primary
+      - name: Daft Punk
+        role: featured
+    album: Starboy
+    track_number: 1
+    release_date: 2016-09-22
+    genre: electro-r&b
+    bpm: 186
+    key: Am
+    explicit: true
+    sources:
+      local: music/the-weeknd/starboy.mp3
+      spotify: spotify:track:7MXVkk9YMctZqd1Srtv4MB
+      youtube: 34Na4j8AVgA
+
+  - title: "Get Lucky"
+    identifiers:
+      isrc: USUG11300948
+      musicbrainz_id: 3f0e7b5a-8c5a-4d6f-9e3b-2c1a0b9d8e7f
+      spotify_uri: spotify:track:69kOkLUCkxIZYexIgSG8rq
+    artists:
+      - name: Daft Punk
+        role: primary
+      - name: Pharrell Williams
+        role: featured
+      - name: Nile Rodgers
+        role: producer
+    album: Random Access Memories
+    track_number: 8
+    release_date: 2013-05-17
+    genre: disco
+    bpm: 116
+    key: Bm
+    explicit: false
+    sources:
+      local: music/daft-punk/get-lucky.mp3
+      spotify: spotify:track:69kOkLUCkxIZYexIgSG8rq
+      youtube: 5NV6Rdv1a3I
+
+  - title: "Around the World"
+    identifiers:
+      isrc: FRZ039700150
+      spotify_uri: spotify:track:1pKYYY0dkg23sQQXi0Q5zN
+    artists:
+      - name: Daft Punk
+        role: primary
+    album: Homework
+    track_number: 4
+    release_date: 1997-01-20
+    genre: french house
+    bpm: 121
+    key: Em
+    explicit: false
+    sources:
+      local: music/daft-punk/around-the-world.mp3
+      spotify: spotify:track:1pKYYY0dkg23sQQXi0Q5zN
+
+  - title: "bad guy"
+    identifiers:
+      isrc: USUM71900764
+      spotify_uri: spotify:track:2Fxmhks0bxGSBdJ92vM42m
+    artists:
+      - name: Billie Eilish
+        role: primary
+    album: WHEN WE ALL FALL ASLEEP, WHERE DO WE GO?
+    track_number: 2
+    release_date: 2019-03-29
+    genre: electropop
+    bpm: 135
+    key: Gm
+    explicit: false
+    sources:
+      local: music/billie-eilish/bad-guy.mp3
+      spotify: spotify:track:2Fxmhks0bxGSBdJ92vM42m
+      youtube: DyDfgMOUjCI
+
+  - title: "Save Your Tears"
+    identifiers:
+      isrc: USUG12001832
+      spotify_uri: spotify:track:5QO79kh1waicV47BqGRL3g
+    artists:
+      - name: The Weeknd
+        role: primary
+    album: After Hours
+    track_number: 6
+    release_date: 2020-03-20
+    genre: synth-pop
+    bpm: 118
+    key: C
+    explicit: false
+    sources:
+      local: music/the-weeknd/save-your-tears.mp3
+      spotify: spotify:track:5QO79kh1waicV47BqGRL3g
+
+  - title: "One More Time"
+    identifiers:
+      isrc: FRZ039800212
+      spotify_uri: spotify:track:0DiWol3AO6WpXZgp0goxAV
+    artists:
+      - name: Daft Punk
+        role: primary
+    album: Discovery
+    track_number: 1
+    release_date: 2001-03-13
+    genre: french house
+    bpm: 122
+    key: Abm
+    explicit: false
+    sources:
+      local: music/daft-punk/one-more-time.mp3
+      spotify: spotify:track:0DiWol3AO6WpXZgp0goxAV
+      youtube: FGBhQbmPwH8
+
+  - title: "Instant Crush"
+    identifiers:
+      isrc: USUG11300906
+      spotify_uri: spotify:track:2cGxRwrMyEAp8dEbuZaVv6
+    artists:
+      - name: Daft Punk
+        role: primary
+      - name: Julian Casablancas
+        role: featured
+    album: Random Access Memories
+    track_number: 5
+    release_date: 2013-05-17
+    genre: electronic rock
+    bpm: 104
+    key: Dm
+    explicit: false
+    sources:
+      local: music/daft-punk/instant-crush.mp3
+      spotify: spotify:track:2cGxRwrMyEAp8dEbuZaVv6
+
+  - title: "I Feel It Coming"
+    identifiers:
+      isrc: USUG11601172
+      spotify_uri: spotify:track:3dhjNA0jGA8vHBQ1VdD6vV
+    artists:
+      - name: The Weeknd
+        role: primary
+      - name: Daft Punk
+        role: featured
+    album: Starboy
+    track_number: 18
+    release_date: 2016-11-25
+    genre: synth-pop
+    bpm: 113
+    key: Ebm
+    explicit: false
+    sources:
+      local: music/the-weeknd/i-feel-it-coming.mp3
+      spotify: spotify:track:3dhjNA0jGA8vHBQ1VdD6vV
+
+  - title: "everything i wanted"
+    identifiers:
+      isrc: USUM71922964
+      spotify_uri: spotify:track:3ZCTVFBt2Brf31RLEnCkWJ
+    artists:
+      - name: Billie Eilish
+        role: primary
+    album: everything i wanted
+    track_number: 1
+    release_date: 2019-11-13
+    genre: electropop
+    bpm: 120
+    key: E
+    explicit: false
+    sources:
+      local: music/billie-eilish/everything-i-wanted.mp3
+      spotify: spotify:track:3ZCTVFBt2Brf31RLEnCkWJ
