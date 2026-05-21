@@ -42,12 +42,14 @@ function LoginContent() {
         .single() as { data: { is_host: boolean } | null };
 
       if (profile?.is_host) {
-        router.push("/admin");
+        // Hosts go to their intended destination if it's a /radio/[slug] deep link,
+        // otherwise default to /admin
+        const isDeepLink = redirect.startsWith("/radio/");
+        router.push(isDeepLink ? redirect : "/admin");
       } else {
-        router.push("/radio");
+        // Friends: honor the redirect param (e.g. /radio/getfatpls), default to /radio list
+        router.push(redirect);
       }
-    } else {
-      router.push(redirect);
     }
   };
 

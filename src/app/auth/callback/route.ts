@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const next = searchParams.get("next") ?? null; // optional deep-link forwarded by middleware
 
   if (code) {
     const supabase = await createClient();
@@ -23,7 +24,15 @@ export async function GET(request: Request) {
           .eq("auth_id", user.id)
           .single() as { data: { is_host: boolean } | null };
 
-        const redirectTo = profile?.is_host ? "/admin" : "/radio";
+        const isHost = profile?.is_host === true;
+
+        // Honor deep-link (e.g. /radio/getfatpls) if present
+        if (next) {
+          const isDeepLink = next.startsWith("/radio/");
+          return NextResponse.redirect(`${origin}${isHost && !isDeepLink ? "/admin" : next}`);
+        }
+
+        const redirectTo = isHost ? "/admin" : "/radio";
         return NextResponse.redirect(`${origin}${redirectTo}`);
       }
 
