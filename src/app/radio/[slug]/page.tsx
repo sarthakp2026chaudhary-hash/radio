@@ -305,13 +305,17 @@ export default function ChannelRadioPage() {
               </div>
             </div>
 
-            {!audioStarted && (
+            {!audioStarted && track?.file_url && (
               <button
                 onClick={handleStartAudio}
                 className="mt-8 px-8 py-3 rounded-full bg-ember text-white font-medium hover:bg-ember/90 transition-colors"
               >
                 Start Listening
               </button>
+            )}
+
+            {!track?.file_url && (
+              <p className="mt-6 text-sm text-text-muted italic">Audio not available yet</p>
             )}
 
             {audioStarted && (
