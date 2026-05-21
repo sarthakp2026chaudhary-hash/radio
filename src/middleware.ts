@@ -59,8 +59,9 @@ export async function middleware(request: NextRequest) {
     const isHost = profile?.is_host === true;
     const pathname = request.nextUrl.pathname;
 
-    // Host accessing /radio -> redirect to /admin
-    if (isHost && pathname.startsWith("/radio")) {
+    // Host accessing /radio list -> redirect to /admin
+    // But allow hosts to visit /radio/[slug] (their own channel, for testing/listening)
+    if (isHost && pathname === "/radio") {
       const url = request.nextUrl.clone();
       url.pathname = "/admin";
       return NextResponse.redirect(url);
