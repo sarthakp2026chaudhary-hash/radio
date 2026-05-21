@@ -90,8 +90,9 @@ export function useHostPresence(channelId?: number) {
     fetchPresence();
 
     const supabase = createClient();
+    const channelName = `host_presence_changes-${Math.random().toString(36).slice(2)}-${Date.now()}`;
     const subscription = supabase
-      .channel("host_presence_changes")
+      .channel(channelName)
       .on(
         "postgres_changes",
         {
