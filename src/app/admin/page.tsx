@@ -220,7 +220,10 @@ function AdminContent() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.6fr] gap-6">
           {/* Library tree rail */}
           <section className="rounded-2xl p-4 lg:h-[70vh] overflow-y-auto" style={{ background: "var(--surface-1)", border: "1px solid var(--surface-3)" }}>
-            <h2 className="text-sm font-semibold text-text-secondary px-2 mb-2 uppercase tracking-wide">Library</h2>
+            <div className="flex items-center justify-between px-2 mb-2">
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Library</h2>
+              <Link href="/admin/add" className="text-xs text-ember hover:opacity-80 transition-opacity">+ Quick add</Link>
+            </div>
             <FolderTree onPlayPlaylist={onPlayPlaylist} />
           </section>
 
