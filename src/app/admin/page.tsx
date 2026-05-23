@@ -132,6 +132,23 @@ function AdminContent() {
     [selectedSlug, controlPlayback, refreshLoop, toast]
   );
 
+  const onAddToQueue = useCallback(
+    async (trackId: number, title: string) => {
+      if (!selectedSlug) {
+        toast("Pick a channel first");
+        return;
+      }
+      try {
+        await controlPlayback(selectedSlug, { action: "add_to_queue", track_id: trackId });
+        toast(`Queued "${title}"`);
+        await refreshLoop(selectedSlug);
+      } catch (e) {
+        toast(e instanceof Error ? e.message : "Failed");
+      }
+    },
+    [selectedSlug, controlPlayback, refreshLoop, toast]
+  );
+
   const onToggle = useCallback(async () => {
     if (!selectedSlug) return;
     setBusy(true);
@@ -224,7 +241,7 @@ function AdminContent() {
               <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Library</h2>
               <Link href="/admin/add" className="text-xs text-ember hover:opacity-80 transition-opacity">+ Quick add</Link>
             </div>
-            <FolderTree onPlayPlaylist={onPlayPlaylist} />
+            <FolderTree onPlayPlaylist={onPlayPlaylist} onAddToQueue={onAddToQueue} />
           </section>
 
           {/* Now orchestrating */}
