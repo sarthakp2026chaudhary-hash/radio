@@ -40,8 +40,12 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith(path)
   );
 
-  // Redirect to login if accessing protected route without auth
-  if (isProtected && !user) {
+  // Channel pages (/radio/<slug>) are public, shareable links — viewable without login.
+  // The /radio index (list) stays gated; only deep channel links are public.
+  const isPublicChannelPage = /^\/radio\/[^/]+/.test(request.nextUrl.pathname);
+
+  // Redirect to login if accessing a protected route without auth (public channel pages exempt)
+  if (isProtected && !user && !isPublicChannelPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", request.nextUrl.pathname);
