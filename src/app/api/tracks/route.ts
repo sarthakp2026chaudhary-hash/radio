@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/supabase/queries";
+import { DEFAULT_TRACK_DURATION_MS } from "@/lib/constants";
 
 export async function GET() {
   const supabase = await createClient();
@@ -30,17 +31,37 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { title, artist_id, album_id, duration_ms, genre, bpm, track_number, cover_url, isrc, spotify_uri, spotify_id } = body;
+    const {
+      title, artist_id, artists, album_id, duration_ms,
+      genre, bpm, track_number, cover_url, isrc, spotify_uri, spotify_id,
+    } = body;
 
     if (!title?.trim()) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
+    // Resolve artists: explicit names → find/create; else legacy artist_id; else "Unknown".
+    let artistIds: number[] = [];
+    if (Array.isArray(artists)) {
+      for (const raw of artists) {
+        const name = String(raw ?? "").trim();
+        if (!name || name.toLowerCase() === "unknown") continue;
+        const { id } = await db.artists.findOrCreateByName(supabase, name);
+        if (id) artistIds.push(id);
+      }
+    }
+    if (artistIds.length === 0 && artist_id) artistIds = [artist_id];
+    if (artistIds.length === 0) {
+      const { data: unknown } = await db.artists.getIdBySlug(supabase, "unknown");
+      if (unknown?.id) artistIds = [unknown.id];
+    }
+    const primaryId = artistIds[0] ?? null;
+
     const { data: track, error } = await db.tracks.create(supabase, {
       title: title.trim(),
-      artist_id: artist_id ?? null,
+      artist_id: primaryId,
       album_id: album_id ?? null,
-      duration_ms: duration_ms ?? 0,
+      duration_ms: duration_ms ?? DEFAULT_TRACK_DURATION_MS,
       genre: genre ?? null,
       bpm: bpm ?? null,
       track_number: track_number ?? null,
@@ -53,6 +74,15 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Persist full multi-artist credits (primary + featured) on the join table.
+    if (track && artistIds.length > 0) {
+      await db.trackArtists.setForTrack(
+        supabase,
+        track.id,
+        artistIds.map((aid, i) => ({ artistId: aid, role: i === 0 ? "primary" : "featured", position: i }))
+      );
     }
 
     return NextResponse.json({ track }, { status: 201 });

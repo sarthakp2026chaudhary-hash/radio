@@ -43,6 +43,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (body.cover_url !== undefined) updates.cover_url = body.cover_url || null;
   if (body.is_public !== undefined) updates.is_public = body.is_public;
 
+  if (body.folder_id !== undefined) {
+    await db.playlists.setFolder(supabase, parseInt(id), body.folder_id ?? null);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ success: true });
+  }
+
   const { data: playlist, error } = await db.playlists.update(supabase, parseInt(id), updates);
 
   if (error) {

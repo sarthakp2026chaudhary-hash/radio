@@ -24,6 +24,7 @@ import type {
   ChannelSchedule,
   ChannelScheduleInsert,
 } from "./types";
+import { slugify } from "../utils";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabase = SupabaseClient<any, any, any>;
@@ -58,6 +59,30 @@ export const db = {
     delete: async (supabase: AnySupabase, id: number) => {
       const result = await supabase.from("artists").delete().eq("id", id);
       return result as { error: any };
+    },
+
+    getIdBySlug: async (supabase: AnySupabase, slug: string) => {
+      const result = await supabase.from("artists").select("id").eq("slug", slug).maybeSingle();
+      return result as { data: { id: number } | null; error: any };
+    },
+
+    // Find an artist by name (via slug), creating it if missing. Used by text-first add.
+    findOrCreateByName: async (
+      supabase: AnySupabase,
+      name: string
+    ): Promise<{ id: number | null; error: any }> => {
+      const clean = name.trim();
+      const slug = slugify(clean) || "unknown";
+      const existing = await supabase.from("artists").select("id").eq("slug", slug).maybeSingle();
+      if (existing.data) return { id: (existing.data as any).id as number, error: null };
+      const created = await supabase.from("artists").insert({ name: clean, slug }).select("id").single();
+      if (created.error) {
+        // unique-slug race: re-fetch
+        const again = await supabase.from("artists").select("id").eq("slug", slug).maybeSingle();
+        if (again.data) return { id: (again.data as any).id as number, error: null };
+        return { id: null, error: created.error };
+      }
+      return { id: (created.data as any).id as number, error: null };
     },
   },
 
@@ -181,6 +206,46 @@ export const db = {
         position: index,
       }));
       const result = await supabase.from("playlist_tracks").insert(updates);
+      return result as { error: any };
+    },
+
+    // Assign (or clear) a playlist's folder. Untyped client tolerates folder_id.
+    setFolder: async (supabase: AnySupabase, playlistId: number, folderId: number | null) => {
+      const result = await supabase.from("playlists").update({ folder_id: folderId }).eq("id", playlistId);
+      return result as { error: any };
+    },
+  },
+
+  folders: {
+    list: async (supabase: AnySupabase) => {
+      const result = await supabase.from("folders").select("*").order("position").order("name");
+      return result as { data: any[] | null; error: any };
+    },
+
+    // Folders with their direct playlists; build the nested tree (via parent_id) in the UI.
+    tree: async (supabase: AnySupabase) => {
+      const result = await supabase
+        .from("folders")
+        .select("*, playlists(id, name, folder_id, is_public)")
+        .order("position");
+      return result as { data: any[] | null; error: any };
+    },
+
+    create: async (
+      supabase: AnySupabase,
+      data: { name: string; parent_id?: number | null; position?: number; color?: string | null }
+    ) => {
+      const result = await supabase.from("folders").insert(data).select().single();
+      return result as { data: any | null; error: any };
+    },
+
+    update: async (supabase: AnySupabase, id: number, data: Record<string, unknown>) => {
+      const result = await supabase.from("folders").update(data).eq("id", id).select().single();
+      return result as { data: any | null; error: any };
+    },
+
+    delete: async (supabase: AnySupabase, id: number) => {
+      const result = await supabase.from("folders").delete().eq("id", id);
       return result as { error: any };
     },
   },

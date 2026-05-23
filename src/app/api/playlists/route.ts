@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { name, description, cover_url, is_public = true } = body;
+  const { name, description, cover_url, is_public = true, folder_id } = body;
 
   if (!name?.trim()) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -51,6 +51,10 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (playlist && folder_id !== undefined) {
+    await db.playlists.setFolder(supabase, playlist.id, folder_id ?? null);
   }
 
   return NextResponse.json({ playlist }, { status: 201 });
