@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button, Modal, EmptyState, EmptyStateIcon } from "@/components/ui";
 import { useArtists } from "@/hooks/useArtists";
 import { useUpload } from "@/hooks/useUpload";
@@ -14,6 +14,7 @@ import type { Artist, Track } from "@/lib/supabase/types";
 export default function LibraryPage() {
   const { artists, isLoading, fetchArtists, createArtist, deleteArtist, getArtistWithTracks } = useArtists();
   const { uploads, addToQueue, uploadAll, removeUpload, clearCompleted } = useUpload();
+  const tracksRef = useRef<HTMLDivElement>(null);
 
   const [selectedArtist, setSelectedArtist] = useState<(Artist & { tracks: Track[] }) | null>(null);
   const [showCreateArtist, setShowCreateArtist] = useState(false);
@@ -28,6 +29,7 @@ export default function LibraryPage() {
 
     const artistWithTracks = await getArtistWithTracks(artist.id);
     setSelectedArtist(artistWithTracks);
+    requestAnimationFrame(() => tracksRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }, [selectedArtist, getArtistWithTracks]);
 
   const handleCreateArtist = async (data: { name: string; bio?: string }) => {
@@ -137,7 +139,7 @@ export default function LibraryPage() {
           </div>
 
           {/* Upload & Tracks */}
-          <div className="lg:col-span-2 space-y-6">
+          <div ref={tracksRef} className="lg:col-span-2 space-y-6 scroll-mt-6">
             {/* Upload Zone */}
             <TrackUploader
               artistId={selectedArtist?.id || null}

@@ -4,7 +4,7 @@ import type { Artist, Track } from "@/lib/supabase/types";
 import { Badge } from "@/components/ui";
 
 interface ArtistCardProps {
-  artist: Artist & { tracks?: Track[] };
+  artist: Artist & { tracks?: Track[]; track_count?: number };
   isSelected: boolean;
   onClick: () => void;
   onEdit?: () => void;
@@ -12,7 +12,7 @@ interface ArtistCardProps {
 }
 
 export function ArtistCard({ artist, isSelected, onClick, onEdit, onDelete }: ArtistCardProps) {
-  const trackCount = artist.tracks?.length || 0;
+  const trackCount = artist.track_count ?? artist.tracks?.length ?? 0;
 
   return (
     <div

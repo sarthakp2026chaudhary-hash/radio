@@ -17,7 +17,12 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ artists });
+  const enriched = (artists || []).map((a: { track_artists?: { count: number }[] }) => {
+    const { track_artists, ...rest } = a;
+    return { ...rest, track_count: track_artists?.[0]?.count ?? 0 };
+  });
+
+  return NextResponse.json({ artists: enriched });
 }
 
 export async function POST(request: NextRequest) {

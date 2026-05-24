@@ -32,8 +32,10 @@ type AnySupabase = SupabaseClient<any, any, any>;
 export const db = {
   artists: {
     list: async (supabase: AnySupabase) => {
-      const result = await supabase.from("artists").select("*").order("name");
-      return result as { data: Artist[] | null; error: any };
+      // track count comes from track_artists (all roles), not the legacy artist_id,
+      // so featured/secondary artists report their real counts.
+      const result = await supabase.from("artists").select("*, track_artists(count)").order("name");
+      return result as { data: any[] | null; error: any };
     },
 
     get: async (supabase: AnySupabase, id: number) => {
