@@ -28,13 +28,15 @@ interface FolderTreeProps {
   /** Add a single song to the active channel's queue. When provided, playlists
    *  become expandable to reveal their songs. */
   onAddToQueue?: (trackId: number, title: string) => void;
+  /** Open the "add to playlist / where is this song" sheet for a song. */
+  onOpenSong?: (trackId: number, title: string) => void;
 }
 
 // Spotify-style collapsible folder → playlist (→ song) tree, built from
 // /api/folders?tree=1. Folders nest via parent_id; each folder carries its
 // direct playlists; playlists expand to songs on demand. Supports creating
 // new folders inline.
-export function FolderTree({ onPlayPlaylist, onAddToQueue }: FolderTreeProps) {
+export function FolderTree({ onPlayPlaylist, onAddToQueue, onOpenSong }: FolderTreeProps) {
   const [folders, setFolders] = useState<FolderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<Record<number, boolean>>({});
@@ -179,6 +181,15 @@ export function FolderTree({ onPlayPlaylist, onAddToQueue }: FolderTreeProps) {
                   >
                     + Queue
                   </button>
+                  {onOpenSong && (
+                    <button
+                      onClick={() => onOpenSong(s.id, s.title)}
+                      className="opacity-0 group-hover/song:opacity-100 transition-opacity text-text-muted hover:text-text-secondary px-1.5 flex-shrink-0"
+                      title="Add to playlists / where is this song"
+                    >
+                      ⋯
+                    </button>
+                  )}
                 </div>
               ))
             )}

@@ -12,6 +12,7 @@ import { useReactionChannel, type StickerPayload } from "@/hooks/useReactionChan
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { useChannels } from "@/hooks/useChannels";
 import { FolderTree } from "@/components/admin/FolderTree";
+import { SongActionsSheet } from "@/components/admin/SongActionsSheet";
 
 interface User {
   id: number;
@@ -43,6 +44,7 @@ function AdminContent() {
   const [selectedSlug, setSelectedSlug] = useState("");
   const [loop, setLoop] = useState<LoopInfo | null>(null);
   const [busy, setBusy] = useState(false);
+  const [sheet, setSheet] = useState<{ id: number; title: string } | null>(null);
 
   useColorScheme();
 
@@ -241,7 +243,7 @@ function AdminContent() {
               <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Library</h2>
               <Link href="/admin/add" className="text-xs text-ember hover:opacity-80 transition-opacity">+ Quick add</Link>
             </div>
-            <FolderTree onPlayPlaylist={onPlayPlaylist} onAddToQueue={onAddToQueue} />
+            <FolderTree onPlayPlaylist={onPlayPlaylist} onAddToQueue={onAddToQueue} onOpenSong={(id, title) => setSheet({ id, title })} />
           </section>
 
           {/* Now orchestrating */}
@@ -320,6 +322,8 @@ function AdminContent() {
           </section>
         </div>
       </div>
+
+      {sheet && <SongActionsSheet trackId={sheet.id} trackTitle={sheet.title} onClose={() => setSheet(null)} />}
 
       <NotificationStack notifications={notifications} onDismiss={dismissNotification} />
     </main>
