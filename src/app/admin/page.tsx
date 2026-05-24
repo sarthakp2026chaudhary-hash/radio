@@ -255,6 +255,9 @@ function AdminContent() {
           <Link href="/admin/graph2" className="px-3 py-1.5 rounded-lg hover:bg-surface-2 transition-colors text-ember" style={{ background: "var(--surface-1)" }}>
             ◈ Brain 2
           </Link>
+          <Link href="/admin/graph3" className="px-3 py-1.5 rounded-lg hover:bg-surface-2 transition-colors text-ember" style={{ background: "var(--surface-1)" }}>
+            ◈ Brain 3
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.6fr] gap-6">
