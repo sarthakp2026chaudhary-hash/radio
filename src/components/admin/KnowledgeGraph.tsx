@@ -8,19 +8,22 @@ interface GNode {
   id: string;
   type: NodeType;
   label: string;
+  color?: string | null;
   x?: number;
   y?: number;
 }
 interface GLink {
   source: string | GNode;
   target: string | GNode;
+  color?: string | null;
 }
 
-const COLORS: Record<NodeType, string> = {
-  folder: "#4a9eff",
-  playlist: "#7c6ef5",
-  song: "#f0a847",
-  artist: "#3ecf8e",
+// Fallback fill when a node has no brain color (white/loose song, dim artist).
+const DEFAULT_FILL: Record<NodeType, string> = {
+  folder: "#8a8aa0",
+  playlist: "#8a8aa0",
+  song: "#e8e8f0",
+  artist: "#4a4a5a",
 };
 const RADIUS: Record<NodeType, number> = { folder: 9, playlist: 6, song: 3, artist: 4 };
 
@@ -61,23 +64,30 @@ export function KnowledgeGraph() {
       ctx.translate(view.x, view.y);
       ctx.scale(view.k, view.k);
 
-      ctx.strokeStyle = "rgba(255,255,255,0.06)";
       ctx.lineWidth = 0.6 / view.k;
       for (const l of links) {
         const s = l.source as GNode;
         const t = l.target as GNode;
         if (s.x == null || t.x == null) continue;
+        if (l.color) {
+          ctx.strokeStyle = l.color;
+          ctx.globalAlpha = 0.4;
+        } else {
+          ctx.strokeStyle = "rgba(255,255,255,0.06)";
+          ctx.globalAlpha = 1;
+        }
         ctx.beginPath();
         ctx.moveTo(s.x, s.y as number);
         ctx.lineTo(t.x, t.y as number);
         ctx.stroke();
       }
+      ctx.globalAlpha = 1;
 
       for (const n of nodes) {
         if (n.x == null) continue;
         ctx.beginPath();
         ctx.arc(n.x, n.y as number, RADIUS[n.type] / view.k, 0, Math.PI * 2);
-        ctx.fillStyle = COLORS[n.type];
+        ctx.fillStyle = n.color ?? DEFAULT_FILL[n.type];
         ctx.fill();
       }
 
@@ -196,10 +206,10 @@ export function KnowledgeGraph() {
       <canvas ref={canvasRef} className="w-full h-full block" style={{ cursor: "grab", touchAction: "none" }} />
       <div className="absolute top-3 left-3 text-xs text-text-muted pointer-events-none">{status}</div>
       <div className="absolute bottom-3 left-3 flex flex-col gap-1 text-[11px] text-text-tertiary pointer-events-none">
-        <span><span style={{ color: COLORS.folder }}>●</span> Folder</span>
-        <span><span style={{ color: COLORS.playlist }}>●</span> Playlist</span>
-        <span><span style={{ color: COLORS.song }}>●</span> Song</span>
-        <span><span style={{ color: COLORS.artist }}>●</span> Artist</span>
+        <span>Color = brain (a folder you color)</span>
+        <span><span style={{ color: "#e8e8f0" }}>●</span> white = loose / in many brains</span>
+        <span><span style={{ color: "#8a8aa0" }}>●</span> uncolored folder/playlist</span>
+        <span><span style={{ color: "#4a4a5a" }}>●</span> artist</span>
       </div>
     </div>
   );

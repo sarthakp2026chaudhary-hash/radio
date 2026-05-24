@@ -6,63 +6,89 @@ interface GraphNode {
   id: string;
   type: NodeType;
   label: string;
+  color: string | null; // brain color, or null = white/loose (client applies a default per type)
 }
 interface GraphLink {
   source: string;
   target: string;
+  color: string | null;
 }
 
-// GET /api/graph — the whole "brain": folders → playlists → songs ← artists.
-// A song/artist appears once and links to every playlist/song it belongs to,
-// so shared nodes form the cross-connections.
+// GET /api/graph — the whole "brain". A "brain" is any folder you give a color;
+// playlists/songs inherit the color of their nearest colored ancestor folder.
+// A song in exactly one brain takes that color; in none/many it stays white and
+// its (brain-colored) edges show which brains it bridges.
 export async function GET() {
   const supabase = await createClient();
 
   const [foldersR, playlistsR, ptR, taR] = await Promise.all([
-    supabase.from("folders").select("id, name, parent_id"),
+    supabase.from("folders").select("id, name, parent_id, color"),
     supabase.from("playlists").select("id, name, folder_id").neq("name", "__defaults__"),
     supabase.from("playlist_tracks").select("playlist_id, track_id"),
     supabase.from("track_artists").select("track_id, artist_id"),
   ]);
 
-  const folders = foldersR.data || [];
-  const playlists = playlistsR.data || [];
-  const pt = ptR.data || [];
-  const ta = taR.data || [];
+  const folders = (foldersR.data || []) as { id: number; name: string; parent_id: number | null; color: string | null }[];
+  const playlists = (playlistsR.data || []) as { id: number; name: string; folder_id: number | null }[];
+  const pt = (ptR.data || []) as { playlist_id: number; track_id: number }[];
+  const ta = (taR.data || []) as { track_id: number; artist_id: number }[];
 
-  const songIds = new Set<number>(pt.map((r: { track_id: number }) => r.track_id));
-  const artistIds = new Set<number>(
-    ta.filter((r: { track_id: number }) => songIds.has(r.track_id)).map((r: { artist_id: number }) => r.artist_id)
-  );
+  // nearest colored ancestor (incl. self) → brain color
+  const folderById = new Map(folders.map((f) => [f.id, f]));
+  const folderColor = new Map<number, string | null>();
+  for (const f of folders) {
+    let cur: typeof f | undefined = f;
+    const seen = new Set<number>();
+    let color: string | null = null;
+    while (cur && !seen.has(cur.id)) {
+      if (cur.color) { color = cur.color; break; }
+      seen.add(cur.id);
+      cur = cur.parent_id != null ? folderById.get(cur.parent_id) : undefined;
+    }
+    folderColor.set(f.id, color);
+  }
+  const playlistColor = new Map<number, string | null>();
+  playlists.forEach((p) => playlistColor.set(p.id, p.folder_id != null ? folderColor.get(p.folder_id) ?? null : null));
+
+  const songIds = new Set<number>(pt.map((r) => r.track_id));
+  const artistIds = new Set<number>(ta.filter((r) => songIds.has(r.track_id)).map((r) => r.artist_id));
+
+  // a song's brain set (distinct colors from the playlists it's in)
+  const songBrains = new Map<number, Set<string>>();
+  pt.forEach((r) => {
+    const c = playlistColor.get(r.playlist_id);
+    if (!c) return;
+    if (!songBrains.has(r.track_id)) songBrains.set(r.track_id, new Set());
+    songBrains.get(r.track_id)!.add(c);
+  });
+  const songColor = (id: number): string | null => {
+    const b = songBrains.get(id);
+    return b && b.size === 1 ? [...b][0] : null; // 0 or 2+ → white
+  };
 
   const [tracksR, artistsR] = await Promise.all([
-    songIds.size
-      ? supabase.from("tracks").select("id, title").in("id", Array.from(songIds))
-      : Promise.resolve({ data: [] as { id: number; title: string }[] }),
-    artistIds.size
-      ? supabase.from("artists").select("id, name").in("id", Array.from(artistIds))
-      : Promise.resolve({ data: [] as { id: number; name: string }[] }),
+    songIds.size ? supabase.from("tracks").select("id, title").in("id", Array.from(songIds)) : Promise.resolve({ data: [] as { id: number; title: string }[] }),
+    artistIds.size ? supabase.from("artists").select("id, name").in("id", Array.from(artistIds)) : Promise.resolve({ data: [] as { id: number; name: string }[] }),
   ]);
   const trackTitle = new Map<number, string>((tracksR.data || []).map((t: { id: number; title: string }) => [t.id, t.title]));
   const artistName = new Map<number, string>((artistsR.data || []).map((a: { id: number; name: string }) => [a.id, a.name]));
 
   const nodes: GraphNode[] = [
-    ...folders.map((f: { id: number; name: string }) => ({ id: `f${f.id}`, type: "folder" as const, label: f.name })),
-    ...playlists.map((p: { id: number; name: string }) => ({ id: `p${p.id}`, type: "playlist" as const, label: p.name })),
-    ...Array.from(songIds).map((id) => ({ id: `s${id}`, type: "song" as const, label: trackTitle.get(id) || "Unknown" })),
-    ...Array.from(artistIds).map((id) => ({ id: `a${id}`, type: "artist" as const, label: artistName.get(id) || "Unknown" })),
+    ...folders.map((f) => ({ id: `f${f.id}`, type: "folder" as const, label: f.name, color: folderColor.get(f.id) ?? null })),
+    ...playlists.map((p) => ({ id: `p${p.id}`, type: "playlist" as const, label: p.name, color: playlistColor.get(p.id) ?? null })),
+    ...Array.from(songIds).map((id) => ({ id: `s${id}`, type: "song" as const, label: trackTitle.get(id) || "Unknown", color: songColor(id) })),
+    ...Array.from(artistIds).map((id) => ({ id: `a${id}`, type: "artist" as const, label: artistName.get(id) || "Unknown", color: null })),
   ];
 
   const nodeIds = new Set(nodes.map((n) => n.id));
   const links: GraphLink[] = [];
-  const add = (a: string, b: string) => {
-    if (nodeIds.has(a) && nodeIds.has(b)) links.push({ source: a, target: b });
+  const add = (a: string, b: string, color: string | null) => {
+    if (nodeIds.has(a) && nodeIds.has(b)) links.push({ source: a, target: b, color });
   };
-
-  folders.forEach((f: { id: number; parent_id: number | null }) => f.parent_id && add(`f${f.parent_id}`, `f${f.id}`));
-  playlists.forEach((p: { id: number; folder_id: number | null }) => p.folder_id && add(`f${p.folder_id}`, `p${p.id}`));
-  pt.forEach((r: { playlist_id: number; track_id: number }) => add(`p${r.playlist_id}`, `s${r.track_id}`));
-  ta.forEach((r: { track_id: number; artist_id: number }) => songIds.has(r.track_id) && add(`s${r.track_id}`, `a${r.artist_id}`));
+  folders.forEach((f) => f.parent_id != null && add(`f${f.parent_id}`, `f${f.id}`, folderColor.get(f.id) ?? null));
+  playlists.forEach((p) => p.folder_id != null && add(`f${p.folder_id}`, `p${p.id}`, playlistColor.get(p.id) ?? null));
+  pt.forEach((r) => add(`p${r.playlist_id}`, `s${r.track_id}`, playlistColor.get(r.playlist_id) ?? null));
+  ta.forEach((r) => songIds.has(r.track_id) && add(`s${r.track_id}`, `a${r.artist_id}`, null));
 
   return NextResponse.json({
     nodes,

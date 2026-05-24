@@ -37,6 +37,16 @@ interface FolderTreeProps {
 // /api/folders?tree=1. Folders nest via parent_id; each folder carries its
 // direct playlists; playlists expand to songs on demand. Supports creating
 // new folders inline.
+const PALETTE: { name: string; c: string | null }[] = [
+  { name: "Red", c: "#f0444c" },
+  { name: "Green", c: "#3ecf8e" },
+  { name: "Pink", c: "#f06595" },
+  { name: "Blue", c: "#4a9eff" },
+  { name: "Amber", c: "#f0a847" },
+  { name: "Purple", c: "#7c6ef5" },
+  { name: "None", c: null },
+];
+
 export function FolderTree({ onPlayPlaylist, onAddToQueue, onOpenSong }: FolderTreeProps) {
   const [folders, setFolders] = useState<FolderRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +60,7 @@ export function FolderTree({ onPlayPlaylist, onAddToQueue, onOpenSong }: FolderT
   const [fName, setFName] = useState("");
   const [fParent, setFParent] = useState("");
   const [fBusy, setFBusy] = useState(false);
+  const [paletteFor, setPaletteFor] = useState<number | null>(null);
 
   const loadFolders = useCallback(async () => {
     try {
@@ -60,6 +71,20 @@ export function FolderTree({ onPlayPlaylist, onAddToQueue, onOpenSong }: FolderT
       /* ignore — show empty state */
     }
   }, []);
+
+  const setFolderColor = async (id: number, color: string | null) => {
+    setPaletteFor(null);
+    try {
+      await fetch(`/api/folders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ color }),
+      });
+      await loadFolders();
+    } catch {
+      /* ignore */
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -210,15 +235,45 @@ export function FolderTree({ onPlayPlaylist, onAddToQueue, onOpenSong }: FolderT
     const playlists = node.playlists || [];
     return (
       <div key={node.id}>
-        <button
-          onClick={() => setOpen((o) => ({ ...o, [node.id]: !isOpen }))}
-          className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-surface-2 transition-colors text-left"
+        <div
+          className="group/folder flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-surface-2 transition-colors"
           style={{ paddingLeft: 8 + depth * 14 }}
         >
-          <span className={`text-text-muted text-xs transition-transform ${isOpen ? "rotate-90" : ""}`}>▸</span>
-          <span className="text-sm font-medium text-text-secondary truncate flex-1">{node.name}</span>
-          <span className="text-[11px] text-text-muted">{playlists.length + node.children.length}</span>
-        </button>
+          <button
+            onClick={() => setOpen((o) => ({ ...o, [node.id]: !isOpen }))}
+            className="flex items-center gap-2 flex-1 min-w-0 text-left"
+          >
+            <span className={`text-text-muted text-xs transition-transform ${isOpen ? "rotate-90" : ""}`}>▸</span>
+            <span className="text-sm font-medium text-text-secondary truncate">{node.name}</span>
+          </button>
+          <div className="relative flex-shrink-0">
+            <button
+              onClick={() => setPaletteFor(paletteFor === node.id ? null : node.id)}
+              className="w-3.5 h-3.5 rounded-full border opacity-50 group-hover/folder:opacity-100 transition-opacity"
+              style={node.color ? { background: node.color, borderColor: node.color } : { borderColor: "var(--surface-3)" }}
+              title="Set brain color"
+            />
+            {paletteFor === node.id && (
+              <div
+                className="absolute right-0 top-5 z-20 flex gap-1 p-1.5 rounded-lg shadow-lg"
+                style={{ background: "var(--surface-2)", border: "1px solid var(--surface-3)" }}
+              >
+                {PALETTE.map((p) => (
+                  <button
+                    key={p.name}
+                    onClick={() => setFolderColor(node.id, p.c)}
+                    title={p.name}
+                    className="w-4 h-4 rounded-full border flex items-center justify-center text-[9px] text-text-muted"
+                    style={p.c ? { background: p.c, borderColor: p.c } : { borderColor: "var(--surface-3)" }}
+                  >
+                    {p.c ? "" : "×"}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <span className="text-[11px] text-text-muted flex-shrink-0">{playlists.length + node.children.length}</span>
+        </div>
         {isOpen && (
           <div>
             {node.children.map((c) => renderNode(c, depth + 1))}
