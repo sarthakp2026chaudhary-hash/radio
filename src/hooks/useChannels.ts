@@ -24,7 +24,8 @@ type PlaybackAction =
   | { action: "seek"; position_ms: number }
   | { action: "shuffle" }
   | { action: "repeat" }
-  | { action: "clear_queue" };
+  | { action: "clear_queue" }
+  | { action: "toggle_skip"; track_id: number };
 
 export function useChannels() {
   const [channels, setChannels] = useState<ChannelWithMeta[]>([]);

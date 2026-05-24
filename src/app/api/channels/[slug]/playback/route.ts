@@ -256,6 +256,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ success: true, action: "clear_queue" });
     }
 
+    case "toggle_skip": {
+      if (!track_id) {
+        return NextResponse.json({ error: "track_id required" }, { status: 400 });
+      }
+      const set = new Set<number>((currentState.skipped_track_ids as number[]) || []);
+      if (set.has(track_id)) set.delete(track_id);
+      else set.add(track_id);
+      const skipped = Array.from(set);
+      await db.channelState.setSkipped(supabase, channel.id, skipped);
+      return NextResponse.json({ success: true, action: "toggle_skip", skipped });
+    }
+
     default:
       return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
   }

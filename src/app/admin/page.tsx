@@ -31,6 +31,7 @@ interface LoopInfo {
   loop_count: number;
   current_track: { id: number; title: string } | null;
   next_track: { id: number; title: string } | null;
+  loop?: { id: number; title: string; skipped: boolean; is_current: boolean }[];
 }
 
 function AdminContent() {
@@ -143,6 +144,19 @@ function AdminContent() {
       try {
         await controlPlayback(selectedSlug, { action: "add_to_queue", track_id: trackId });
         toast(`Queued "${title}"`);
+        await refreshLoop(selectedSlug);
+      } catch (e) {
+        toast(e instanceof Error ? e.message : "Failed");
+      }
+    },
+    [selectedSlug, controlPlayback, refreshLoop, toast]
+  );
+
+  const onToggleSkip = useCallback(
+    async (trackId: number) => {
+      if (!selectedSlug) return;
+      try {
+        await controlPlayback(selectedSlug, { action: "toggle_skip", track_id: trackId });
         await refreshLoop(selectedSlug);
       } catch (e) {
         toast(e instanceof Error ? e.message : "Failed");
@@ -313,6 +327,43 @@ function AdminContent() {
                     Full controls →
                   </Link>
                 </div>
+
+                {loop?.loop && loop.loop.length > 0 && (
+                  <div className="mt-6">
+                    <p className="text-[11px] uppercase tracking-wide text-text-muted mb-2">
+                      On loop · tap − to hide a song from this queue
+                    </p>
+                    <div className="max-h-64 overflow-y-auto -mx-1">
+                      {loop.loop.map((s) => (
+                        <div
+                          key={s.id}
+                          className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${s.is_current ? "bg-surface-2" : ""}`}
+                        >
+                          <span
+                            className={`text-sm truncate flex-1 ${
+                              s.skipped
+                                ? "text-text-muted line-through"
+                                : s.is_current
+                                ? "text-ember"
+                                : "text-text-secondary"
+                            }`}
+                          >
+                            {s.title}
+                          </span>
+                          <button
+                            onClick={() => onToggleSkip(s.id)}
+                            className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] flex-shrink-0 transition-colors ${
+                              s.skipped ? "border border-surface-3 text-text-muted" : "bg-success text-void"
+                            }`}
+                            title={s.skipped ? "Hidden — tap to include" : "Included — tap to hide"}
+                          >
+                            {s.skipped ? "−" : "✓"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <p className="text-xs text-text-muted mt-6">
                   Tip: hover a playlist in the library and hit <span className="text-text-tertiary">▶ Play</span> to load it onto this channel.

@@ -32,12 +32,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     loopTracks = [state.current_track];
   }
 
-  const loopCount = loopTracks.length;
+  // Hidden ("−") tracks are skipped: they drop out of the rotation entirely.
+  const skipped = new Set<number>((state?.skipped_track_ids as number[]) || []);
+  const effective = loopTracks.filter((t) => t && !skipped.has(t.id));
+
+  const loopCount = effective.length;
   let currentIdx = 0;
   let positionMs = 0;
 
   if (loopCount > 0 && state?.is_playing && state?.playback_started_at) {
-    const durations = loopTracks.map((t) => t?.duration_ms || DEFAULT_TRACK_DURATION_MS);
+    const durations = effective.map((t) => t?.duration_ms || DEFAULT_TRACK_DURATION_MS);
     const total = durations.reduce((a, b) => a + b, 0);
     const elapsed = Date.now() - new Date(state.playback_started_at).getTime();
     if (total > 0) {
@@ -53,8 +57,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
   }
 
-  const current = loopTracks[currentIdx] || null;
-  const next = loopCount > 0 ? loopTracks[(currentIdx + 1) % loopCount] : null;
+  const current = effective[currentIdx] || null;
+  const next = loopCount > 0 ? effective[(currentIdx + 1) % loopCount] : null;
 
   return NextResponse.json({
     channel: {
@@ -76,5 +80,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         }
       : null,
     next_track: next ? { id: next.id, title: next.title } : null,
+    // Full ordered loop (including hidden) with flags — powers the host's queue toggles.
+    loop: loopTracks.map((t) => ({
+      id: t.id,
+      title: t.title,
+      skipped: skipped.has(t.id),
+      is_current: !!current && t.id === current.id,
+    })),
   });
 }

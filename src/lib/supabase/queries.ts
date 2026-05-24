@@ -316,6 +316,12 @@ export const db = {
       const result = await supabase.from("channel_state").update(data).eq("channel_id", channelId);
       return result as { error: any };
     },
+
+    // Set the per-channel hidden ("−") track ids. Untyped client tolerates the column.
+    setSkipped: async (supabase: AnySupabase, channelId: number, skippedTrackIds: number[]) => {
+      const result = await supabase.from("channel_state").update({ skipped_track_ids: skippedTrackIds }).eq("channel_id", channelId);
+      return result as { error: any };
+    },
   },
 
   users: {
