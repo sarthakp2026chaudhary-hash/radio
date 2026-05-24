@@ -1,6 +1,6 @@
 # Ideas v1 — Radio as a Text-First DJ & Knowledge-Graph Platform
 
-Date: 2026-05-22 · Status: product brief (extends feedback-v1.md)
+Created: 2026-05-22 · **Last updated: 2026-05-22** · Status: product brief (extends feedback-v1.md & feedback-v2.md)
 
 ## The one-liner
 A private, late-night "radio in a friend's room" that is **text-first**: the unit of value is a *curated song, in a playlist, in a genre* — not an audio file. Audio is optional. The owner curates like a DJ; friends just tune in.
@@ -70,3 +70,20 @@ Rebuilt as a compact DJ console: folder/playlist tree on the left; the active ch
 - Search across the library.
 - Lightweight playlist analytics (playlists are just things people make).
 - **Data streaming / an API** to expose this brain to other apps — likely a separate product later.
+
+---
+
+## Update log
+_Raw running log of what's actually been built/decided. Newest first._
+
+### 2026-05-22 — brains + content tooling shipped (live on considerable.in)
+- **Three brains** (graph views), all additive, all deployed:
+  - **Brain 1** (`/admin/graph`) — whole-library force graph; a node's color = its **brain** (nearest colored folder); song in 1 brain = that color, in 0/many = white, brain-colored edges show bridges.
+  - **Brain 2** (`/admin/graph2`) — artist-centric, scoped to "Beam me up, jesus.", excludes audio-uploaded songs.
+  - **Brain 3** (`/admin/graph3`) — concentric "THE BRAIN": **artists inner → songs middle → playlists outer**, draggable nodes, hover/click to highlight connections, tooltip (songs · in N playlists ⇄ shared). Exact spec in feedback-v2.md.
+- **Brains = colored folders.** Any folder you color (swatch in the Library tree) becomes a brain; songs inherit it. "Beam me up, jesus." → green.
+- **Decision (raw):** the genre/brain is **owner-decided, NOT derived from shared-playlist logic.** It's all one genre (Beam) for now → **everything green**; multi-color (Rock = red, Faithless = pink) comes as other genres are added. White ring = shared across playlists. Bigger artist = more songs.
+- **Content tooling:** Quick Add (bulk text), folder creation + color picker, **move playlist → folder**, song-actions sheet (add-to-playlist / "where is this song"), song-level add-to-queue, hide-in-queue (−), swipe-to-queue + now-playing bar.
+- **Data:** "Mellow" imported (6 folders · 33 playlists · ~677 songs · ~614 artists). "Unknown" = seeded canonical artist for missing data.
+- **Fixes:** Library artist counts now via `track_artists` (featured artists no longer read 0); `/api/graph` paginated (Supabase 1000-row cap had dropped ~42 credits — see errors.md **E005**).
+- **Pending:** import Rock (awaiting HTML) → red; assemble Faithless folder → pink; optional graph polish (brain selector, mobile pinch-zoom).
