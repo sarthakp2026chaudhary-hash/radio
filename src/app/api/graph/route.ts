@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 type NodeType = "folder" | "playlist" | "song" | "artist";
@@ -18,8 +18,10 @@ interface GraphLink {
 // playlists/songs inherit the color of their nearest colored ancestor folder.
 // A song in exactly one brain takes that color; in none/many it stays white and
 // its (brain-colored) edges show which brains it bridges.
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = await createClient();
+  const folderParam = request.nextUrl.searchParams.get("folder");
+  const excludeAudio = request.nextUrl.searchParams.get("excludeAudio") === "1";
 
   const [foldersR, playlistsR, ptR, taR] = await Promise.all([
     supabase.from("folders").select("id, name, parent_id, color"),
@@ -28,13 +30,38 @@ export async function GET() {
     supabase.from("track_artists").select("track_id, artist_id"),
   ]);
 
-  const folders = (foldersR.data || []) as { id: number; name: string; parent_id: number | null; color: string | null }[];
-  const playlists = (playlistsR.data || []) as { id: number; name: string; folder_id: number | null }[];
-  const pt = (ptR.data || []) as { playlist_id: number; track_id: number }[];
+  const allFolders = (foldersR.data || []) as { id: number; name: string; parent_id: number | null; color: string | null }[];
+  let playlists = (playlistsR.data || []) as { id: number; name: string; folder_id: number | null }[];
+  let pt = (ptR.data || []) as { playlist_id: number; track_id: number }[];
   const ta = (taR.data || []) as { track_id: number; artist_id: number }[];
 
-  // nearest colored ancestor (incl. self) → brain color
-  const folderById = new Map(folders.map((f) => [f.id, f]));
+  // Optional scope: a folder's whole subtree (used by brain 2). Default = whole library.
+  let folders = allFolders;
+  if (folderParam) {
+    const root = parseInt(folderParam);
+    const childrenByParent = new Map<number, number[]>();
+    allFolders.forEach((f) => {
+      if (f.parent_id != null) {
+        if (!childrenByParent.has(f.parent_id)) childrenByParent.set(f.parent_id, []);
+        childrenByParent.get(f.parent_id)!.push(f.id);
+      }
+    });
+    const sub = new Set<number>();
+    const stack = [root];
+    while (stack.length) {
+      const id = stack.pop()!;
+      if (sub.has(id)) continue;
+      sub.add(id);
+      (childrenByParent.get(id) || []).forEach((c) => stack.push(c));
+    }
+    folders = allFolders.filter((f) => sub.has(f.id));
+    playlists = playlists.filter((p) => p.folder_id != null && sub.has(p.folder_id));
+    const plIds = new Set(playlists.map((p) => p.id));
+    pt = pt.filter((r) => plIds.has(r.playlist_id));
+  }
+
+  // nearest colored ancestor (incl. self) → brain color (walk the FULL tree)
+  const folderById = new Map(allFolders.map((f) => [f.id, f]));
   const folderColor = new Map<number, string | null>();
   for (const f of folders) {
     let cur: typeof f | undefined = f;
@@ -50,12 +77,25 @@ export async function GET() {
   const playlistColor = new Map<number, string | null>();
   playlists.forEach((p) => playlistColor.set(p.id, p.folder_id != null ? folderColor.get(p.folder_id) ?? null : null));
 
-  const songIds = new Set<number>(pt.map((r) => r.track_id));
+  let songIds = new Set<number>(pt.map((r) => r.track_id));
+
+  const tracksR = songIds.size
+    ? await supabase.from("tracks").select("id, title, file_url").in("id", Array.from(songIds))
+    : { data: [] as { id: number; title: string; file_url: string | null }[] };
+  const tracksData = (tracksR.data || []) as { id: number; title: string; file_url: string | null }[];
+
+  // brain 2 excludes songs that have an uploaded audio file (text-only curation view)
+  if (excludeAudio) {
+    const audio = new Set(tracksData.filter((t) => t.file_url).map((t) => t.id));
+    songIds = new Set(Array.from(songIds).filter((id) => !audio.has(id)));
+  }
+
   const artistIds = new Set<number>(ta.filter((r) => songIds.has(r.track_id)).map((r) => r.artist_id));
 
   // a song's brain set (distinct colors from the playlists it's in)
   const songBrains = new Map<number, Set<string>>();
   pt.forEach((r) => {
+    if (!songIds.has(r.track_id)) return;
     const c = playlistColor.get(r.playlist_id);
     if (!c) return;
     if (!songBrains.has(r.track_id)) songBrains.set(r.track_id, new Set());
@@ -66,11 +106,10 @@ export async function GET() {
     return b && b.size === 1 ? [...b][0] : null; // 0 or 2+ → white
   };
 
-  const [tracksR, artistsR] = await Promise.all([
-    songIds.size ? supabase.from("tracks").select("id, title").in("id", Array.from(songIds)) : Promise.resolve({ data: [] as { id: number; title: string }[] }),
-    artistIds.size ? supabase.from("artists").select("id, name").in("id", Array.from(artistIds)) : Promise.resolve({ data: [] as { id: number; name: string }[] }),
-  ]);
-  const trackTitle = new Map<number, string>((tracksR.data || []).map((t: { id: number; title: string }) => [t.id, t.title]));
+  const artistsR = artistIds.size
+    ? await supabase.from("artists").select("id, name").in("id", Array.from(artistIds))
+    : { data: [] as { id: number; name: string }[] };
+  const trackTitle = new Map<number, string>(tracksData.map((t) => [t.id, t.title]));
   const artistName = new Map<number, string>((artistsR.data || []).map((a: { id: number; name: string }) => [a.id, a.name]));
 
   const nodes: GraphNode[] = [

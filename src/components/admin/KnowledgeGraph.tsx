@@ -29,7 +29,7 @@ const RADIUS: Record<NodeType, number> = { folder: 9, playlist: 6, song: 3, arti
 
 // Interactive canvas force-graph of the whole library. d3-force lays it out
 // (quadtree → handles ~1.3k nodes); we render to canvas with pan (drag) + zoom (wheel).
-export function KnowledgeGraph() {
+export function KnowledgeGraph({ endpoint = "/api/graph", bigType }: { endpoint?: string; bigType?: NodeType }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState("Loading…");
 
@@ -86,7 +86,7 @@ export function KnowledgeGraph() {
       for (const n of nodes) {
         if (n.x == null) continue;
         ctx.beginPath();
-        ctx.arc(n.x, n.y as number, RADIUS[n.type] / view.k, 0, Math.PI * 2);
+        ctx.arc(n.x, n.y as number, (bigType && n.type === bigType ? 11 : RADIUS[n.type]) / view.k, 0, Math.PI * 2);
         ctx.fillStyle = n.color ?? DEFAULT_FILL[n.type];
         ctx.fill();
       }
@@ -110,7 +110,7 @@ export function KnowledgeGraph() {
 
     (async () => {
       try {
-        const res = await fetch("/api/graph");
+        const res = await fetch(endpoint);
         const data = await res.json();
         nodes = data.nodes || [];
         links = data.links || [];
@@ -199,7 +199,7 @@ export function KnowledgeGraph() {
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("resize", resize);
     };
-  }, []);
+  }, [endpoint, bigType]);
 
   return (
     <div className="relative w-full h-full">
