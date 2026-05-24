@@ -23,17 +23,45 @@ export async function GET(request: NextRequest) {
   const folderParam = request.nextUrl.searchParams.get("folder");
   const excludeAudio = request.nextUrl.searchParams.get("excludeAudio") === "1";
 
-  const [foldersR, playlistsR, ptR, taR] = await Promise.all([
-    supabase.from("folders").select("id, name, parent_id, color"),
-    supabase.from("playlists").select("id, name, folder_id").neq("name", "__defaults__"),
-    supabase.from("playlist_tracks").select("playlist_id, track_id"),
-    supabase.from("track_artists").select("track_id, artist_id"),
+  // Supabase caps a single fetch at 1000 rows — paginate so large tables
+  // (track_artists, playlist_tracks…) aren't silently truncated.
+  const PAGE = 1000;
+  async function fetchAll<T>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    build: (from: number, to: number) => any
+  ): Promise<T[]> {
+    let from = 0;
+    const out: T[] = [];
+    for (;;) {
+      const { data, error } = await build(from, from + PAGE - 1);
+      if (error) throw error;
+      const rows = (data || []) as T[];
+      out.push(...rows);
+      if (rows.length < PAGE) break;
+      from += PAGE;
+    }
+    return out;
+  }
+
+  const [allFolders, playlistsAll, ptAll, ta, allTracks, allArtists] = await Promise.all([
+    fetchAll<{ id: number; name: string; parent_id: number | null; color: string | null }>((f, t) =>
+      supabase.from("folders").select("id, name, parent_id, color").range(f, t)),
+    fetchAll<{ id: number; name: string; folder_id: number | null }>((f, t) =>
+      supabase.from("playlists").select("id, name, folder_id").neq("name", "__defaults__").range(f, t)),
+    fetchAll<{ playlist_id: number; track_id: number }>((f, t) =>
+      supabase.from("playlist_tracks").select("playlist_id, track_id").range(f, t)),
+    fetchAll<{ track_id: number; artist_id: number }>((f, t) =>
+      supabase.from("track_artists").select("track_id, artist_id").range(f, t)),
+    fetchAll<{ id: number; title: string; file_url: string | null }>((f, t) =>
+      supabase.from("tracks").select("id, title, file_url").range(f, t)),
+    fetchAll<{ id: number; name: string }>((f, t) =>
+      supabase.from("artists").select("id, name").range(f, t)),
   ]);
 
-  const allFolders = (foldersR.data || []) as { id: number; name: string; parent_id: number | null; color: string | null }[];
-  let playlists = (playlistsR.data || []) as { id: number; name: string; folder_id: number | null }[];
-  let pt = (ptR.data || []) as { playlist_id: number; track_id: number }[];
-  const ta = (taR.data || []) as { track_id: number; artist_id: number }[];
+  let playlists = playlistsAll;
+  let pt = ptAll;
+  const trackById = new Map(allTracks.map((t) => [t.id, t]));
+  const artistName = new Map<number, string>(allArtists.map((a) => [a.id, a.name]));
 
   // Optional scope: a folder's whole subtree (used by brain 2). Default = whole library.
   let folders = allFolders;
@@ -79,15 +107,9 @@ export async function GET(request: NextRequest) {
 
   let songIds = new Set<number>(pt.map((r) => r.track_id));
 
-  const tracksR = songIds.size
-    ? await supabase.from("tracks").select("id, title, file_url").in("id", Array.from(songIds))
-    : { data: [] as { id: number; title: string; file_url: string | null }[] };
-  const tracksData = (tracksR.data || []) as { id: number; title: string; file_url: string | null }[];
-
   // brain 2 excludes songs that have an uploaded audio file (text-only curation view)
   if (excludeAudio) {
-    const audio = new Set(tracksData.filter((t) => t.file_url).map((t) => t.id));
-    songIds = new Set(Array.from(songIds).filter((id) => !audio.has(id)));
+    songIds = new Set(Array.from(songIds).filter((id) => !trackById.get(id)?.file_url));
   }
 
   const artistIds = new Set<number>(ta.filter((r) => songIds.has(r.track_id)).map((r) => r.artist_id));
@@ -106,11 +128,7 @@ export async function GET(request: NextRequest) {
     return b && b.size === 1 ? [...b][0] : null; // 0 or 2+ → white
   };
 
-  const artistsR = artistIds.size
-    ? await supabase.from("artists").select("id, name").in("id", Array.from(artistIds))
-    : { data: [] as { id: number; name: string }[] };
-  const trackTitle = new Map<number, string>(tracksData.map((t) => [t.id, t.title]));
-  const artistName = new Map<number, string>((artistsR.data || []).map((a: { id: number; name: string }) => [a.id, a.name]));
+  const trackTitle = new Map<number, string>(allTracks.map((t) => [t.id, t.title]));
 
   const nodes: GraphNode[] = [
     ...folders.map((f) => ({ id: `f${f.id}`, type: "folder" as const, label: f.name, color: folderColor.get(f.id) ?? null })),
