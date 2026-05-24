@@ -1,14 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button, Modal, Input, Textarea, EmptyState, EmptyStateIcon } from "@/components/ui";
 import { usePlaylists } from "@/hooks/usePlaylists";
 import { PlaylistCard } from "@/components/admin/PlaylistCard";
 
 export default function PlaylistsPage() {
-  const { playlists, isLoading, createPlaylist, deletePlaylist } = usePlaylists();
+  const { playlists, isLoading, createPlaylist, deletePlaylist, updatePlaylist } = usePlaylists();
+  const [folders, setFolders] = useState<{ id: number; name: string }[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [playlistToDelete, setPlaylistToDelete] = useState<{ id: number; name: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/folders")
+      .then((r) => r.json())
+      .then((d) => setFolders((d.folders || []).map((f: { id: number; name: string }) => ({ id: f.id, name: f.name }))))
+      .catch(() => {});
+  }, []);
+
+  const handleMove = async (playlistId: number, folderId: number | null) => {
+    try {
+      await updatePlaylist(playlistId, { folder_id: folderId });
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -96,11 +112,26 @@ export default function PlaylistsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {playlists.map((playlist) => (
-              <PlaylistCard
-                key={playlist.id}
-                playlist={playlist}
-                onDelete={() => setPlaylistToDelete({ id: playlist.id, name: playlist.name })}
-              />
+              <div key={playlist.id} className="space-y-2">
+                <PlaylistCard
+                  playlist={playlist}
+                  onDelete={() => setPlaylistToDelete({ id: playlist.id, name: playlist.name })}
+                />
+                <div className="flex items-center gap-2 px-1">
+                  <span className="text-[11px] text-text-muted flex-shrink-0">Folder</span>
+                  <select
+                    value={(playlist as { folder_id?: number | null }).folder_id ?? ""}
+                    onChange={(e) => handleMove(playlist.id, e.target.value ? parseInt(e.target.value) : null)}
+                    className="flex-1 text-xs px-2 py-1 rounded-md text-text-tertiary"
+                    style={{ background: "var(--surface-2)", border: "1px solid var(--surface-3)" }}
+                  >
+                    <option value="">No folder</option>
+                    {folders.map((f) => (
+                      <option key={f.id} value={f.id}>{f.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             ))}
           </div>
         )}

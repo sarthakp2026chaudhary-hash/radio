@@ -62,7 +62,7 @@ export function usePlaylists() {
     return data.playlist;
   }, []);
 
-  const updatePlaylist = useCallback(async (id: number, updates: Partial<Playlist>) => {
+  const updatePlaylist = useCallback(async (id: number, updates: Partial<Playlist> & { folder_id?: number | null }) => {
     const res = await fetch(`/api/playlists/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
