@@ -13,6 +13,7 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 import { useChannels } from "@/hooks/useChannels";
 import { FolderTree } from "@/components/admin/FolderTree";
 import { SongActionsSheet } from "@/components/admin/SongActionsSheet";
+import { SwipeRow } from "@/components/admin/SwipeRow";
 
 interface User {
   id: number;
@@ -236,7 +237,7 @@ function AdminContent() {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-6 py-6">
+      <div className="max-w-6xl mx-auto px-6 py-6 pb-28">
         {/* slim nav / stats strip — de-emphasized */}
         <div className="flex flex-wrap gap-2 mb-6 text-sm">
           <Link href="/admin/library" className="px-3 py-1.5 rounded-lg hover:bg-surface-2 transition-colors text-text-tertiary" style={{ background: "var(--surface-1)" }}>
@@ -373,6 +374,28 @@ function AdminContent() {
           </section>
         </div>
       </div>
+
+      {channels.length > 0 && loop?.current_track && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t" style={{ background: "var(--surface-1)", borderColor: "var(--surface-3)" }}>
+          <div className="max-w-6xl mx-auto px-6 py-3">
+            <SwipeRow onSwipeLeft={onSkip} leftLabel="Skip">
+              <div className="flex items-center gap-3" style={{ background: "var(--surface-1)" }}>
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${loop.is_playing ? "bg-success animate-pulse" : "bg-text-muted"}`} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] uppercase tracking-wide text-text-muted truncate">On {loop.channel?.name ?? selectedSlug}</p>
+                  <p className="text-sm text-text-secondary truncate">{loop.current_track.title}</p>
+                </div>
+                <button onClick={onToggle} disabled={busy} className="px-4 py-1.5 rounded-full bg-ember text-white text-sm font-medium hover:opacity-90 disabled:opacity-50">
+                  {loop.is_playing ? "Pause" : "Play"}
+                </button>
+                <button onClick={onSkip} disabled={busy} className="px-3 py-1.5 rounded-full text-sm text-text-secondary hover:bg-surface-2 disabled:opacity-50" style={{ border: "1px solid var(--surface-3)" }}>
+                  Skip
+                </button>
+              </div>
+            </SwipeRow>
+          </div>
+        </div>
+      )}
 
       {sheet && <SongActionsSheet trackId={sheet.id} trackTitle={sheet.title} onClose={() => setSheet(null)} />}
 

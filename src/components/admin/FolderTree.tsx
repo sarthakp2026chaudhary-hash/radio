@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { SwipeRow } from "./SwipeRow";
 
 interface PlaylistLite {
   id: number;
@@ -167,30 +168,35 @@ export function FolderTree({ onPlayPlaylist, onAddToQueue, onOpenSong }: FolderT
               </p>
             ) : (
               (songs[pl.id] || []).map((s) => (
-                <div
+                <SwipeRow
                   key={s.id}
-                  className="group/song flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-surface-2 transition-colors"
-                  style={{ paddingLeft: 8 + (depth + 2) * 14 }}
+                  onSwipeRight={onAddToQueue ? () => onAddToQueue(s.id, s.title) : undefined}
+                  rightLabel="Queue"
                 >
-                  <span className="text-text-muted text-[10px] flex-shrink-0">•</span>
-                  <span className="text-xs text-text-tertiary truncate flex-1">{s.title}</span>
-                  <button
-                    onClick={() => onAddToQueue?.(s.id, s.title)}
-                    className="opacity-0 group-hover/song:opacity-100 transition-opacity text-[11px] px-2 py-0.5 rounded-md text-text-secondary hover:bg-surface-3 flex-shrink-0"
-                    title="Add this song to the channel queue"
+                  <div
+                    className="group/song flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-surface-2 transition-colors"
+                    style={{ paddingLeft: 8 + (depth + 2) * 14 }}
                   >
-                    + Queue
-                  </button>
-                  {onOpenSong && (
+                    <span className="text-text-muted text-[10px] flex-shrink-0">•</span>
+                    <span className="text-xs text-text-tertiary truncate flex-1">{s.title}</span>
                     <button
-                      onClick={() => onOpenSong(s.id, s.title)}
-                      className="opacity-0 group-hover/song:opacity-100 transition-opacity text-text-muted hover:text-text-secondary px-1.5 flex-shrink-0"
-                      title="Add to playlists / where is this song"
+                      onClick={() => onAddToQueue?.(s.id, s.title)}
+                      className="opacity-0 group-hover/song:opacity-100 transition-opacity text-[11px] px-2 py-0.5 rounded-md text-text-secondary hover:bg-surface-3 flex-shrink-0"
+                      title="Add this song to the channel queue"
                     >
-                      ⋯
+                      + Queue
                     </button>
-                  )}
-                </div>
+                    {onOpenSong && (
+                      <button
+                        onClick={() => onOpenSong(s.id, s.title)}
+                        className="opacity-0 group-hover/song:opacity-100 transition-opacity text-text-muted hover:text-text-secondary px-1.5 flex-shrink-0"
+                        title="Add to playlists / where is this song"
+                      >
+                        ⋯
+                      </button>
+                    )}
+                  </div>
+                </SwipeRow>
               ))
             )}
           </div>
