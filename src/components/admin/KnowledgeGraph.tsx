@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { forceSimulation, forceManyBody, forceLink, forceCenter, forceCollide } from "d3-force";
-import { BRAIN_SAD_BLUE, BRAIN_SEA_GREEN } from "@/lib/brain-colors";
+import { BRAIN_SAD_BLUE, BRAIN_BRIDGE } from "@/lib/brain-colors";
 
 type NodeType = "folder" | "playlist" | "song" | "artist";
 interface GNode {
@@ -52,7 +52,7 @@ function applySadScheme(nodes: GNode[], links: GLink[], dprshPlaylistIds: string
     if (n.type === "playlist" && dprsh.has(n.id)) n.color = BRAIN_SAD_BLUE;
     else if (n.type === "song") {
       const m = mem.get(n.id);
-      if (m && m.blue > 0 && m.green > 0) n.color = BRAIN_SEA_GREEN;
+      if (m && m.blue > 0 && m.green > 0) n.color = BRAIN_BRIDGE;
       else if (m && m.blue > 0) n.color = BRAIN_SAD_BLUE;
     }
   }
@@ -261,8 +261,8 @@ export function KnowledgeGraph({
         <span><span style={{ color: "#4a4a5a" }}>●</span> artist</span>
         {dprshPlaylistIds && dprshPlaylistIds.length > 0 && (
           <>
-            <span><span style={{ color: BRAIN_SEA_GREEN }}>●</span> sea green = bridge (dprsh + other)</span>
-            <span><span style={{ color: BRAIN_SAD_BLUE }}>●</span> blue = only in dprsh</span>
+            <span><span style={{ color: BRAIN_BRIDGE }}>●</span> bridge (dprsh + other)</span>
+            <span><span style={{ color: BRAIN_SAD_BLUE }}>●</span> only in dprsh</span>
           </>
         )}
       </div>

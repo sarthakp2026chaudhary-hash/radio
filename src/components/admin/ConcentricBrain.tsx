@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { forceSimulation, forceManyBody, forceLink, forceCollide, forceRadial } from "d3-force";
-import { BRAIN_GREEN as GREEN, BRAIN_SAD_BLUE as SAD_BLUE, BRAIN_SEA_GREEN as SEA_GREEN } from "@/lib/brain-colors";
+import { BRAIN_GREEN as GREEN, BRAIN_SAD_BLUE as SAD_BLUE, BRAIN_BRIDGE as BRIDGE } from "@/lib/brain-colors";
 
 type NodeType = "artist" | "song" | "playlist";
 interface GNode {
@@ -187,7 +187,7 @@ export function ConcentricBrain({ dprshPlaylistIds = [] }: { dprshPlaylistIds?: 
           let blue = 0;
           let green = 0;
           for (const p of pls) { if (dprshPlaylists.has(p)) blue++; else green++; }
-          if (blue > 0 && green > 0) songFill.set(song, SEA_GREEN);
+          if (blue > 0 && green > 0) songFill.set(song, BRIDGE);
           else if (blue > 0) songFill.set(song, SAD_BLUE);
         }
 
@@ -344,7 +344,7 @@ export function ConcentricBrain({ dprshPlaylistIds = [] }: { dprshPlaylistIds?: 
         <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full" style={{ background: GREEN }} /> Artist (inner)</div>
         <div className="flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full" style={{ background: GREEN }} /> Song (middle)</div>
         <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full ring-1 ring-white" style={{ background: GREEN }} /> shared across playlists</div>
-        <div className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: SEA_GREEN }} /> bridge song (dprsh + other)</div>
+        <div className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: BRIDGE }} /> bridge song (dprsh + other)</div>
         <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full" style={{ background: SAD_BLUE }} /> dprsh playlist · only-dprsh song</div>
         <div className="text-text-muted pt-1">Bigger artist = more songs. Outer ring = playlists.</div>
       </div>

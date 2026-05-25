@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { KnowledgeGraph } from "@/components/admin/KnowledgeGraph";
-import { BRAIN_SAD_BLUE, BRAIN_SEA_GREEN } from "@/lib/brain-colors";
+import { BRAIN_SAD_BLUE, BRAIN_BRIDGE } from "@/lib/brain-colors";
 
 const BEAM_FOLDER_NAME = "Beam me up, jesus.";
 const DPRSH_FOLDER_NAME = "dprsh1";
@@ -70,7 +70,7 @@ export default function Graph4Page() {
           <p className="text-xs text-text-tertiary">
             All of “Beam me up, jesus.” stays green — songs only in a{" "}
             <span style={{ color: BRAIN_SAD_BLUE }}>dprsh</span> playlist go sad blue; songs that{" "}
-            <span style={{ color: BRAIN_SEA_GREEN }}>bridge</span> dprsh + another playlist go sea green.
+            <span style={{ color: BRAIN_BRIDGE }}>bridge</span> dprsh + another playlist turn aqua (the blue+green mix).
           </p>
         </div>
         <div className="flex items-center gap-4">
