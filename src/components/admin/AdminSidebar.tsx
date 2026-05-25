@@ -9,6 +9,13 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
+interface AdminSidebarProps {
+  /** Drawer open state on mobile. On md+ the sidebar is always visible. */
+  open?: boolean;
+  /** Called when a nav item is tapped or the backdrop is clicked (closes the mobile drawer). */
+  onClose?: () => void;
+}
+
 const navItems: NavItem[] = [
   {
     href: "/admin",
@@ -48,7 +55,7 @@ const navItems: NavItem[] = [
   },
 ];
 
-export function AdminSidebar() {
+export function AdminSidebar({ open = false, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
 
   const isActive = (href: string) => {
@@ -59,50 +66,75 @@ export function AdminSidebar() {
   };
 
   return (
-    <aside
-      className="w-64 min-h-screen border-r border-surface-3 flex flex-col"
-      style={{ background: "var(--surface-1)" }}
-    >
-      <div className="p-6 border-b border-surface-3">
-        <h1
-          className="text-xl font-semibold text-text-primary"
-          style={{ fontFamily: "var(--font-playfair)" }}
-        >
-          Radio Admin
-        </h1>
-      </div>
+    <>
+      {/* Backdrop — mobile only, when the drawer is open */}
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 md:hidden"
+          onClick={onClose}
+          aria-hidden
+        />
+      )}
 
-      <nav className="flex-1 p-4">
-        <ul className="space-y-1">
-          {navItems.map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                  isActive(item.href)
-                    ? "bg-ember/10 text-ember"
-                    : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
-                }`}
-              >
-                {item.icon}
-                <span className="font-medium">{item.label}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-surface-3 flex flex-col transform transition-transform duration-200 ease-out md:static md:z-auto md:translate-x-0 ${
+          open ? "translate-x-0" : "-translate-x-full"
+        }`}
+        style={{ background: "var(--surface-1)" }}
+      >
+        <div className="p-6 border-b border-surface-3 flex items-center justify-between">
+          <h1
+            className="text-xl font-semibold text-text-primary"
+            style={{ fontFamily: "var(--font-playfair)" }}
+          >
+            Radio Admin
+          </h1>
+          {/* Close button — mobile only */}
+          <button
+            onClick={onClose}
+            className="md:hidden p-1 -mr-1 text-text-tertiary hover:text-text-primary"
+            aria-label="Close menu"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
-      <div className="p-4 border-t border-surface-3">
-        <Link
-          href="/radio"
-          className="flex items-center gap-3 px-4 py-3 rounded-xl text-text-tertiary hover:bg-surface-2 hover:text-text-secondary transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-          </svg>
-          <span className="font-medium">Back to Radio</span>
-        </Link>
-      </div>
-    </aside>
+        <nav className="flex-1 p-4 overflow-y-auto">
+          <ul className="space-y-1">
+            {navItems.map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  onClick={onClose}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                    isActive(item.href)
+                      ? "bg-ember/10 text-ember"
+                      : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
+                  }`}
+                >
+                  {item.icon}
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="p-4 border-t border-surface-3">
+          <Link
+            href="/radio"
+            onClick={onClose}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-text-tertiary hover:bg-surface-2 hover:text-text-secondary transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+            </svg>
+            <span className="font-medium">Back to Radio</span>
+          </Link>
+        </div>
+      </aside>
+    </>
   );
 }

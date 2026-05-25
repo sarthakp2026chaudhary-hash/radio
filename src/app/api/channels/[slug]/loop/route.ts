@@ -59,6 +59,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   const current = effective[currentIdx] || null;
   const next = loopCount > 0 ? effective[(currentIdx + 1) % loopCount] : null;
+  const artistOf = (t: any): string | null => t?.artists?.name ?? null;
+  const trackCard = (t: any) =>
+    t
+      ? {
+          id: t.id,
+          title: t.title,
+          artist: artistOf(t),
+          file_url: t.file_url ?? null,
+          cover_url: t.cover_url ?? null,
+          duration_ms: t.duration_ms ?? DEFAULT_TRACK_DURATION_MS,
+        }
+      : null;
 
   return NextResponse.json({
     channel: {
@@ -68,18 +80,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     },
     is_playing: !!state?.is_playing,
     loop_count: loopCount,
+    current_index: currentIdx,
     current_position_ms: positionMs,
     // current_track is exposed for optional audio playback; the listener UI decides
     // what (if anything) to display about it.
-    current_track: current
-      ? {
-          id: current.id,
-          title: current.title,
-          file_url: current.file_url ?? null,
-          duration_ms: current.duration_ms ?? DEFAULT_TRACK_DURATION_MS,
-        }
-      : null,
-    next_track: next ? { id: next.id, title: next.title } : null,
+    current_track: trackCard(current),
+    next_track: next ? { id: next.id, title: next.title, artist: artistOf(next) } : null,
+    // Effective ordered loop WITH audio fields — lets the listener play through the
+    // whole loop locally (advance on `ended`) instead of going silent between songs.
+    tracks: effective.map((t) => ({
+      id: t.id,
+      title: t.title,
+      artist: artistOf(t),
+      file_url: t.file_url ?? null,
+      cover_url: t.cover_url ?? null,
+      duration_ms: t.duration_ms ?? DEFAULT_TRACK_DURATION_MS,
+    })),
     // Full ordered loop (including hidden) with flags — powers the host's queue toggles.
     loop: loopTracks.map((t) => ({
       id: t.id,
