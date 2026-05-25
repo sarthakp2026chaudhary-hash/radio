@@ -12,6 +12,7 @@ interface GNode {
   songs: number;
   playlists: number;
   shared: boolean;
+  fill: string;
   x?: number;
   y?: number;
   fx?: number | null;
@@ -20,10 +21,16 @@ interface GNode {
 interface GLink {
   source: string | GNode;
   target: string | GNode;
+  blue: boolean; // edge belongs to a dprsh playlist
 }
 
-// All-green for now (single genre: Beam me up jesus). White ring = shared across playlists.
+// Default brain color = Beam me up jesus (green). The dprsh ("sad") subset is
+// recolored: its playlists + their edges go sad blue, and songs that live in a
+// dprsh playlist go sea green. An edge is colored by its PLAYLIST end, so a song
+// shared between a dprsh and a non-dprsh playlist shows one blue + one green edge.
 const GREEN = "#3ecf8e";
+const SAD_BLUE = "#5C82B0"; // dprsh playlists + their edges
+const SEA_GREEN = "#2E8B57"; // songs that live in a dprsh playlist
 const RADIAL = { artist: 0, song: 430, playlist: 700 } as const;
 
 interface Tip {
@@ -36,7 +43,7 @@ interface Tip {
   shared: boolean;
 }
 
-export function ConcentricBrain() {
+export function ConcentricBrain({ dprshPlaylistIds = [] }: { dprshPlaylistIds?: string[] } = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState("Loading…");
   const [tip, setTip] = useState<Tip | null>(null);
@@ -46,6 +53,8 @@ export function ConcentricBrain() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
+    const dprshPlaylists = new Set(dprshPlaylistIds);
 
     let raf = 0;
     let nodes: GNode[] = [];
@@ -86,7 +95,12 @@ export function ConcentricBrain() {
         const t = l.target as GNode;
         if (s.x == null || t.x == null) continue;
         const on = active ? s.id === active || t.id === active : false;
-        ctx.strokeStyle = on ? "rgba(62,207,142,0.5)" : active ? "rgba(255,255,255,0.025)" : "rgba(62,207,142,0.10)";
+        const rgb = l.blue ? "92,130,176" : "62,207,142";
+        ctx.strokeStyle = on
+          ? `rgba(${rgb},0.6)`
+          : active
+          ? "rgba(255,255,255,0.025)"
+          : `rgba(${rgb},${l.blue ? 0.16 : 0.1})`;
         ctx.beginPath();
         ctx.moveTo(s.x, s.y as number);
         ctx.lineTo(t.x, t.y as number);
@@ -100,7 +114,7 @@ export function ConcentricBrain() {
         ctx.globalAlpha = dim ? 0.18 : 1;
         ctx.beginPath();
         ctx.arc(n.x, n.y as number, n.r / view.k, 0, Math.PI * 2);
-        ctx.fillStyle = GREEN;
+        ctx.fillStyle = n.fill;
         ctx.fill();
         if (n.shared) {
           ctx.lineWidth = 1.4 / view.k;
@@ -169,6 +183,12 @@ export function ConcentricBrain() {
           }
         }
 
+        // a song is "sad" if it sits in any dprsh playlist
+        const dprshSongs = new Set<string>();
+        for (const [song, pls] of songPlaylists) {
+          for (const p of pls) if (dprshPlaylists.has(p)) { dprshSongs.add(song); break; }
+        }
+
         nodes = rawNodes
           .filter((n) => n.type !== "folder")
           .map((n) => {
@@ -188,9 +208,15 @@ export function ConcentricBrain() {
             }
             const shared = (type === "artist" || type === "song") && playlists > 1;
             const r = type === "artist" ? 3 + Math.sqrt(songs) * 1.9 : type === "playlist" ? 5.5 : 2.5;
-            return { id: n.id, type, label: n.label, r, songs, playlists, shared };
+            let fill = GREEN;
+            if (type === "playlist" && dprshPlaylists.has(n.id)) fill = SAD_BLUE;
+            else if (type === "song" && dprshSongs.has(n.id)) fill = SEA_GREEN;
+            return { id: n.id, type, label: n.label, r, songs, playlists, shared, fill };
           });
-        links = flinks.map((l) => ({ source: l.source, target: l.target }));
+        links = flinks.map((l) => {
+          const pid = l.source.startsWith("p") ? l.source : l.target.startsWith("p") ? l.target : null;
+          return { source: l.source, target: l.target, blue: pid ? dprshPlaylists.has(pid) : false };
+        });
 
         for (const l of links) {
           const s = l.source as string;
@@ -301,7 +327,7 @@ export function ConcentricBrain() {
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("resize", resize);
     };
-  }, []);
+  }, [dprshPlaylistIds]);
 
   return (
     <div className="relative w-full h-full">
@@ -316,6 +342,8 @@ export function ConcentricBrain() {
         <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full" style={{ background: GREEN }} /> Artist (inner)</div>
         <div className="flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full" style={{ background: GREEN }} /> Song (middle)</div>
         <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full ring-1 ring-white" style={{ background: GREEN }} /> shared across playlists</div>
+        <div className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: SEA_GREEN }} /> sad song (in a dprsh playlist)</div>
+        <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full" style={{ background: SAD_BLUE }} /> dprsh playlist + its edges</div>
         <div className="text-text-muted pt-1">Bigger artist = more songs. Outer ring = playlists.</div>
       </div>
 

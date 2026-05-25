@@ -11,6 +11,7 @@ import { ConcentricBrain } from "@/components/admin/ConcentricBrain";
 export default function Graph3Page() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
+  const [dprshIds, setDprshIds] = useState<string[]>([]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -29,6 +30,19 @@ export default function Graph3Page() {
         router.push("/radio");
         return;
       }
+      // Resolve the dprsh1 folder's playlists so the brain can paint them sad.
+      const { data: folder } = (await supabase
+        .from("folders")
+        .select("id")
+        .eq("name", "dprsh1")
+        .maybeSingle()) as { data: { id: number } | null };
+      if (folder) {
+        const { data: pls } = (await supabase
+          .from("playlists")
+          .select("id")
+          .eq("folder_id", folder.id)) as { data: { id: number }[] | null };
+        setDprshIds((pls || []).map((p) => `p${p.id}`));
+      }
       setReady(true);
     })();
   }, [router]);
@@ -46,7 +60,7 @@ export default function Graph3Page() {
       <header className="border-b border-surface-3 px-6 py-3 flex items-center justify-between flex-shrink-0">
         <div>
           <h1 className="text-lg font-semibold">Brain 3 · the brain</h1>
-          <p className="text-xs text-text-tertiary">Artists inner · songs middle · playlists outer — drag a node, hover to highlight.</p>
+          <p className="text-xs text-text-tertiary">Artists inner · songs middle · playlists outer — dprsh playlists/edges go sad blue, their songs sea green.</p>
         </div>
         <div className="flex items-center gap-4">
           <Link href="/admin/graph" className="text-sm text-text-tertiary hover:text-text-secondary transition-colors">Brain 1</Link>
@@ -55,7 +69,7 @@ export default function Graph3Page() {
         </div>
       </header>
       <div className="flex-1 relative">
-        <ConcentricBrain />
+        <ConcentricBrain dprshPlaylistIds={dprshIds} />
       </div>
     </main>
   );
