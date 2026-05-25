@@ -12,7 +12,7 @@ interface GNode {
   r: number;
   songs: number;
   playlists: number;
-  shared: boolean;
+  mono: boolean;
   fill: string;
   x?: number;
   y?: number;
@@ -25,10 +25,13 @@ interface GLink {
   blue: boolean; // edge belongs to a dprsh playlist
 }
 
-// dprsh ("sad") coloring (shared with Brain 4 via brain-colors): a song is sea green
-// if it bridges a dprsh + non-dprsh playlist, sad blue if it lives ONLY in dprsh
-// playlists; dprsh playlists + their edges are sad blue; everything else green. An
-// edge is colored by its PLAYLIST end, so a bridge song shows one blue + one green edge.
+// dprsh ("sad") coloring (palette shared with Brain 4 via brain-colors). Genres are
+// encoded by EDGE color (green = normal, blue = dprsh); a NODE's color blends the
+// genres it belongs to: only-green → green, only-dprsh → sad blue, BOTH → aqua bridge.
+// This applies to songs AND artists (an artist's genres = the union over its songs).
+// A white ring marks a node that belongs to exactly ONE genre (mono); multi-genre
+// bridges get no ring. Edges are colored by their PLAYLIST end, so a bridge shows one
+// blue + one green edge.
 const RADIAL = { artist: 0, song: 430, playlist: 700 } as const;
 
 interface Tip {
@@ -38,7 +41,7 @@ interface Tip {
   label: string;
   songs: number;
   playlists: number;
-  shared: boolean;
+  mono: boolean;
 }
 
 export function ConcentricBrain({ dprshPlaylistIds = [] }: { dprshPlaylistIds?: string[] } = {}) {
@@ -114,7 +117,7 @@ export function ConcentricBrain({ dprshPlaylistIds = [] }: { dprshPlaylistIds?: 
         ctx.arc(n.x, n.y as number, n.r / view.k, 0, Math.PI * 2);
         ctx.fillStyle = n.fill;
         ctx.fill();
-        if (n.shared) {
+        if (n.mono) {
           ctx.lineWidth = 1.4 / view.k;
           ctx.strokeStyle = "rgba(255,255,255,0.9)";
           ctx.stroke();
@@ -181,39 +184,44 @@ export function ConcentricBrain({ dprshPlaylistIds = [] }: { dprshPlaylistIds?: 
           }
         }
 
-        // song fill by membership: bridge (dprsh + other) → sea green; only-dprsh → sad blue.
-        const songFill = new Map<string, string>();
-        for (const [song, pls] of songPlaylists) {
-          let blue = 0;
-          let green = 0;
-          for (const p of pls) { if (dprshPlaylists.has(p)) blue++; else green++; }
-          if (blue > 0 && green > 0) songFill.set(song, BRIDGE);
-          else if (blue > 0) songFill.set(song, SAD_BLUE);
-        }
-
+        // Genre membership per node (green = a non-dprsh playlist, blue = a dprsh playlist).
+        // An artist's genres = the union over its songs' playlists.
+        //   color: both genres → bridge aqua; blue only → sad blue; green only → green.
+        //   white ring (mono) = belongs to exactly ONE genre (songs/artists only).
         nodes = rawNodes
           .filter((n) => n.type !== "folder")
           .map((n) => {
             const type = n.type as NodeType;
             let songs = 0;
-            let playlists = 0;
+            const pls = new Set<string>();
             if (type === "artist") {
-              const ss = artistSongs.get(n.id) ?? new Set();
+              const ss = artistSongs.get(n.id) ?? new Set<string>();
               songs = ss.size;
-              const pls = new Set<string>();
               ss.forEach((s) => (songPlaylists.get(s) ?? new Set()).forEach((p) => pls.add(p)));
-              playlists = pls.size;
             } else if (type === "song") {
-              playlists = (songPlaylists.get(n.id) ?? new Set()).size;
+              (songPlaylists.get(n.id) ?? new Set()).forEach((p) => pls.add(p));
             } else {
               songs = (playlistSongs.get(n.id) ?? new Set()).size;
             }
-            const shared = (type === "artist" || type === "song") && playlists > 1;
-            const r = type === "artist" ? 3 + Math.sqrt(songs) * 1.9 : type === "playlist" ? 5.5 : 2.5;
+
+            let hasGreen = false;
+            let hasBlue = false;
+            if (type === "playlist") {
+              if (dprshPlaylists.has(n.id)) hasBlue = true;
+              else hasGreen = true;
+            } else {
+              for (const p of pls) {
+                if (dprshPlaylists.has(p)) hasBlue = true;
+                else hasGreen = true;
+              }
+            }
+
             let fill = GREEN;
-            if (type === "playlist" && dprshPlaylists.has(n.id)) fill = SAD_BLUE;
-            else if (type === "song") fill = songFill.get(n.id) ?? GREEN;
-            return { id: n.id, type, label: n.label, r, songs, playlists, shared, fill };
+            if (hasBlue && hasGreen) fill = BRIDGE;
+            else if (hasBlue) fill = SAD_BLUE;
+            const mono = type !== "playlist" && hasGreen !== hasBlue; // in exactly one genre
+            const r = type === "artist" ? 3 + Math.sqrt(songs) * 1.9 : type === "playlist" ? 5.5 : 2.5;
+            return { id: n.id, type, label: n.label, r, songs, playlists: pls.size, mono, fill };
           });
         links = flinks.map((l) => {
           const pid = l.source.startsWith("p") ? l.source : l.target.startsWith("p") ? l.target : null;
@@ -298,7 +306,7 @@ export function ConcentricBrain({ dprshPlaylistIds = [] }: { dprshPlaylistIds?: 
       const hit = hitTest(e.clientX - rect.left, e.clientY - rect.top);
       hoverId = hit?.id ?? null;
       if (hit) {
-        setTip({ x: e.clientX - rect.left, y: e.clientY - rect.top, type: hit.type, label: hit.label, songs: hit.songs, playlists: hit.playlists, shared: hit.shared });
+        setTip({ x: e.clientX - rect.left, y: e.clientY - rect.top, type: hit.type, label: hit.label, songs: hit.songs, playlists: hit.playlists, mono: hit.mono });
         canvas.style.cursor = "pointer";
       } else {
         setTip(null);
@@ -341,12 +349,11 @@ export function ConcentricBrain({ dprshPlaylistIds = [] }: { dprshPlaylistIds?: 
         style={{ background: "rgba(17,17,19,0.7)", border: "1px solid var(--surface-3)" }}
       >
         <div className="font-mono uppercase tracking-wide text-text-secondary mb-1">The brain</div>
-        <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full" style={{ background: GREEN }} /> Artist (inner)</div>
-        <div className="flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full" style={{ background: GREEN }} /> Song (middle)</div>
-        <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full ring-1 ring-white" style={{ background: GREEN }} /> shared across playlists</div>
-        <div className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: BRIDGE }} /> bridge song (dprsh + other)</div>
-        <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full" style={{ background: SAD_BLUE }} /> dprsh playlist · only-dprsh song</div>
-        <div className="text-text-muted pt-1">Bigger artist = more songs. Outer ring = playlists.</div>
+        <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full" style={{ background: GREEN }} /> one genre (green)</div>
+        <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full" style={{ background: SAD_BLUE }} /> dprsh only</div>
+        <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full" style={{ background: BRIDGE }} /> bridge (both genres)</div>
+        <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full ring-1 ring-white" style={{ background: "transparent" }} /> white ring = single genre</div>
+        <div className="text-text-muted pt-1">Artist inner · song middle · playlist outer. Bigger artist = more songs.</div>
       </div>
 
       <div className="absolute top-3 left-3 text-xs text-text-muted pointer-events-none">{status}</div>
@@ -363,7 +370,7 @@ export function ConcentricBrain({ dprshPlaylistIds = [] }: { dprshPlaylistIds?: 
             {tip.type === "artist" && `${tip.songs} song${tip.songs === 1 ? "" : "s"} · in ${tip.playlists} playlist${tip.playlists === 1 ? "" : "s"}`}
             {tip.type === "song" && `in ${tip.playlists} playlist${tip.playlists === 1 ? "" : "s"}`}
             {tip.type === "playlist" && `${tip.songs} song${tip.songs === 1 ? "" : "s"}`}
-            {tip.shared && " ⇄ shared"}
+            {tip.mono && tip.type !== "playlist" && " · one genre"}
           </div>
         </div>
       )}
