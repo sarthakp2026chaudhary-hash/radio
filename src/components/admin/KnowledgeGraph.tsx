@@ -29,19 +29,22 @@ const RADIUS: Record<NodeType, number> = { folder: 9, playlist: 6, song: 3, arti
 
 // Interactive canvas force-graph of the whole library. d3-force lays it out
 // (quadtree → handles ~1.3k nodes); we render to canvas with pan (drag) + zoom (wheel).
-// Optional theming (used by Brain 4): songColor overrides song-node fill, and
-// songEdgeColor overrides every link that touches a song — independent of the
-// folder/brain colors, so it never affects the other brains.
+// Optional theming (used by Brain 4): songColor recolors song nodes and songEdgeColor
+// recolors links touching a song — independent of folder/brain colors. When
+// highlightSongIds is given, the theming applies ONLY to those songs (the rest keep
+// their normal brain color); when omitted it applies to every song.
 export function KnowledgeGraph({
   endpoint = "/api/graph",
   bigType,
   songColor,
   songEdgeColor,
+  highlightSongIds,
 }: {
   endpoint?: string;
   bigType?: NodeType;
   songColor?: string;
   songEdgeColor?: string;
+  highlightSongIds?: string[];
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState("Loading…");
@@ -51,6 +54,10 @@ export function KnowledgeGraph({
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
+    // null = theme ALL songs; a set = theme only that subset (Brain 4: the dprsh songs).
+    const hi = highlightSongIds && highlightSongIds.length ? new Set(highlightSongIds) : null;
+    const isHiSong = (n: GNode) => n.type === "song" && (!hi || hi.has(n.id));
 
     let raf = 0;
     let nodes: GNode[] = [];
@@ -82,8 +89,8 @@ export function KnowledgeGraph({
         const s = l.source as GNode;
         const t = l.target as GNode;
         if (s.x == null || t.x == null) continue;
-        const touchesSong = s.type === "song" || t.type === "song";
-        if (songEdgeColor && touchesSong) {
+        const touchesHiSong = isHiSong(s) || isHiSong(t);
+        if (songEdgeColor && touchesHiSong) {
           ctx.strokeStyle = songEdgeColor;
           ctx.globalAlpha = 0.55;
         } else if (l.color) {
@@ -104,7 +111,7 @@ export function KnowledgeGraph({
         if (n.x == null) continue;
         ctx.beginPath();
         ctx.arc(n.x, n.y as number, (bigType && n.type === bigType ? 11 : RADIUS[n.type]) / view.k, 0, Math.PI * 2);
-        ctx.fillStyle = songColor && n.type === "song" ? songColor : n.color ?? DEFAULT_FILL[n.type];
+        ctx.fillStyle = songColor && isHiSong(n) ? songColor : n.color ?? DEFAULT_FILL[n.type];
         ctx.fill();
       }
 
@@ -216,7 +223,7 @@ export function KnowledgeGraph({
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("resize", resize);
     };
-  }, [endpoint, bigType, songColor, songEdgeColor]);
+  }, [endpoint, bigType, songColor, songEdgeColor, highlightSongIds]);
 
   return (
     <div className="relative w-full h-full">
