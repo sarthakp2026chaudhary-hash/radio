@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { forceSimulation, forceManyBody, forceLink, forceCollide, forceRadial } from "d3-force";
+import { BRAIN_GREEN as GREEN, BRAIN_SAD_BLUE as SAD_BLUE, BRAIN_SEA_GREEN as SEA_GREEN } from "@/lib/brain-colors";
 
 type NodeType = "artist" | "song" | "playlist";
 interface GNode {
@@ -24,13 +25,10 @@ interface GLink {
   blue: boolean; // edge belongs to a dprsh playlist
 }
 
-// Default brain color = Beam me up jesus (green). The dprsh ("sad") subset is
-// recolored: its playlists + their edges go sad blue, and songs that live in a
-// dprsh playlist go sea green. An edge is colored by its PLAYLIST end, so a song
-// shared between a dprsh and a non-dprsh playlist shows one blue + one green edge.
-const GREEN = "#3ecf8e";
-const SAD_BLUE = "#5C82B0"; // dprsh playlists + their edges
-const SEA_GREEN = "#2E8B57"; // songs that live in a dprsh playlist
+// dprsh ("sad") coloring (shared with Brain 4 via brain-colors): a song is sea green
+// if it bridges a dprsh + non-dprsh playlist, sad blue if it lives ONLY in dprsh
+// playlists; dprsh playlists + their edges are sad blue; everything else green. An
+// edge is colored by its PLAYLIST end, so a bridge song shows one blue + one green edge.
 const RADIAL = { artist: 0, song: 430, playlist: 700 } as const;
 
 interface Tip {
@@ -183,10 +181,14 @@ export function ConcentricBrain({ dprshPlaylistIds = [] }: { dprshPlaylistIds?: 
           }
         }
 
-        // a song is "sad" if it sits in any dprsh playlist
-        const dprshSongs = new Set<string>();
+        // song fill by membership: bridge (dprsh + other) → sea green; only-dprsh → sad blue.
+        const songFill = new Map<string, string>();
         for (const [song, pls] of songPlaylists) {
-          for (const p of pls) if (dprshPlaylists.has(p)) { dprshSongs.add(song); break; }
+          let blue = 0;
+          let green = 0;
+          for (const p of pls) { if (dprshPlaylists.has(p)) blue++; else green++; }
+          if (blue > 0 && green > 0) songFill.set(song, SEA_GREEN);
+          else if (blue > 0) songFill.set(song, SAD_BLUE);
         }
 
         nodes = rawNodes
@@ -210,7 +212,7 @@ export function ConcentricBrain({ dprshPlaylistIds = [] }: { dprshPlaylistIds?: 
             const r = type === "artist" ? 3 + Math.sqrt(songs) * 1.9 : type === "playlist" ? 5.5 : 2.5;
             let fill = GREEN;
             if (type === "playlist" && dprshPlaylists.has(n.id)) fill = SAD_BLUE;
-            else if (type === "song" && dprshSongs.has(n.id)) fill = SEA_GREEN;
+            else if (type === "song") fill = songFill.get(n.id) ?? GREEN;
             return { id: n.id, type, label: n.label, r, songs, playlists, shared, fill };
           });
         links = flinks.map((l) => {
@@ -342,8 +344,8 @@ export function ConcentricBrain({ dprshPlaylistIds = [] }: { dprshPlaylistIds?: 
         <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full" style={{ background: GREEN }} /> Artist (inner)</div>
         <div className="flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full" style={{ background: GREEN }} /> Song (middle)</div>
         <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full ring-1 ring-white" style={{ background: GREEN }} /> shared across playlists</div>
-        <div className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: SEA_GREEN }} /> sad song (in a dprsh playlist)</div>
-        <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full" style={{ background: SAD_BLUE }} /> dprsh playlist + its edges</div>
+        <div className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: SEA_GREEN }} /> bridge song (dprsh + other)</div>
+        <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full" style={{ background: SAD_BLUE }} /> dprsh playlist · only-dprsh song</div>
         <div className="text-text-muted pt-1">Bigger artist = more songs. Outer ring = playlists.</div>
       </div>
 

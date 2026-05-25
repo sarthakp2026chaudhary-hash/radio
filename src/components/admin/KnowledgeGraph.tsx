@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { forceSimulation, forceManyBody, forceLink, forceCenter, forceCollide } from "d3-force";
+import { BRAIN_SAD_BLUE, BRAIN_SEA_GREEN } from "@/lib/brain-colors";
 
 type NodeType = "folder" | "playlist" | "song" | "artist";
 interface GNode {
@@ -16,6 +17,7 @@ interface GLink {
   source: string | GNode;
   target: string | GNode;
   color?: string | null;
+  blue?: boolean; // edge touches a dprsh playlist
 }
 
 // Fallback fill when a node has no brain color (white/loose song, dim artist).
@@ -27,24 +29,51 @@ const DEFAULT_FILL: Record<NodeType, string> = {
 };
 const RADIUS: Record<NodeType, number> = { folder: 9, playlist: 6, song: 3, artist: 4 };
 
-// Interactive canvas force-graph of the whole library. d3-force lays it out
-// (quadtree → handles ~1.3k nodes); we render to canvas with pan (drag) + zoom (wheel).
-// Optional theming (used by Brain 4): songColor recolors song nodes and songEdgeColor
-// recolors links touching a song — independent of folder/brain colors. When
-// highlightSongIds is given, the theming applies ONLY to those songs (the rest keep
-// their normal brain color); when omitted it applies to every song.
+// Brain 4's "sad" coloring, applied in-place to the fetched graph (before the force
+// sim mutates link.source/target to node refs). Colors a song by its PLAYLIST
+// membership: bridge (in a dprsh AND a non-dprsh playlist) → sea green; only-dprsh →
+// sad blue; otherwise untouched. dprsh playlist nodes + any edge touching one → blue.
+function applySadScheme(nodes: GNode[], links: GLink[], dprshPlaylistIds: string[]) {
+  const dprsh = new Set(dprshPlaylistIds);
+  if (dprsh.size === 0) return;
+  const mem = new Map<string, { blue: number; green: number }>();
+  for (const l of links) {
+    const s = l.source;
+    const t = l.target;
+    if (typeof s !== "string" || typeof t !== "string") continue;
+    if (s[0] === "p" && t[0] === "s") {
+      const m = mem.get(t) ?? { blue: 0, green: 0 };
+      if (dprsh.has(s)) m.blue++;
+      else m.green++;
+      mem.set(t, m);
+    }
+  }
+  for (const n of nodes) {
+    if (n.type === "playlist" && dprsh.has(n.id)) n.color = BRAIN_SAD_BLUE;
+    else if (n.type === "song") {
+      const m = mem.get(n.id);
+      if (m && m.blue > 0 && m.green > 0) n.color = BRAIN_SEA_GREEN;
+      else if (m && m.blue > 0) n.color = BRAIN_SAD_BLUE;
+    }
+  }
+  for (const l of links) {
+    const s = l.source;
+    const t = l.target;
+    if ((typeof s === "string" && dprsh.has(s)) || (typeof t === "string" && dprsh.has(t))) l.blue = true;
+  }
+}
+
+// Interactive canvas force-graph. d3-force lays it out (quadtree → ~1.3k nodes);
+// rendered to canvas with pan (drag) + zoom (wheel). When dprshPlaylistIds is passed
+// (Brain 4) the sad coloring is applied; otherwise nodes/edges use the API colors.
 export function KnowledgeGraph({
   endpoint = "/api/graph",
   bigType,
-  songColor,
-  songEdgeColor,
-  highlightSongIds,
+  dprshPlaylistIds,
 }: {
   endpoint?: string;
   bigType?: NodeType;
-  songColor?: string;
-  songEdgeColor?: string;
-  highlightSongIds?: string[];
+  dprshPlaylistIds?: string[];
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState("Loading…");
@@ -54,10 +83,6 @@ export function KnowledgeGraph({
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
-    // null = theme ALL songs; a set = theme only that subset (Brain 4: the dprsh songs).
-    const hi = highlightSongIds && highlightSongIds.length ? new Set(highlightSongIds) : null;
-    const isHiSong = (n: GNode) => n.type === "song" && (!hi || hi.has(n.id));
 
     let raf = 0;
     let nodes: GNode[] = [];
@@ -89,9 +114,8 @@ export function KnowledgeGraph({
         const s = l.source as GNode;
         const t = l.target as GNode;
         if (s.x == null || t.x == null) continue;
-        const touchesHiSong = isHiSong(s) || isHiSong(t);
-        if (songEdgeColor && touchesHiSong) {
-          ctx.strokeStyle = songEdgeColor;
+        if (l.blue) {
+          ctx.strokeStyle = BRAIN_SAD_BLUE;
           ctx.globalAlpha = 0.55;
         } else if (l.color) {
           ctx.strokeStyle = l.color;
@@ -111,7 +135,7 @@ export function KnowledgeGraph({
         if (n.x == null) continue;
         ctx.beginPath();
         ctx.arc(n.x, n.y as number, (bigType && n.type === bigType ? 11 : RADIUS[n.type]) / view.k, 0, Math.PI * 2);
-        ctx.fillStyle = songColor && isHiSong(n) ? songColor : n.color ?? DEFAULT_FILL[n.type];
+        ctx.fillStyle = n.color ?? DEFAULT_FILL[n.type];
         ctx.fill();
       }
 
@@ -138,6 +162,7 @@ export function KnowledgeGraph({
         const data = await res.json();
         nodes = data.nodes || [];
         links = data.links || [];
+        if (dprshPlaylistIds) applySadScheme(nodes, links, dprshPlaylistIds);
         setStatus(`${nodes.length} nodes · ${links.length} links — drag to pan, scroll to zoom`);
         resize();
         const rect = canvas.getBoundingClientRect();
@@ -223,7 +248,7 @@ export function KnowledgeGraph({
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("resize", resize);
     };
-  }, [endpoint, bigType, songColor, songEdgeColor, highlightSongIds]);
+  }, [endpoint, bigType, dprshPlaylistIds]);
 
   return (
     <div className="relative w-full h-full">
@@ -234,6 +259,12 @@ export function KnowledgeGraph({
         <span><span style={{ color: "#e8e8f0" }}>●</span> white = loose / in many brains</span>
         <span><span style={{ color: "#8a8aa0" }}>●</span> uncolored folder/playlist</span>
         <span><span style={{ color: "#4a4a5a" }}>●</span> artist</span>
+        {dprshPlaylistIds && dprshPlaylistIds.length > 0 && (
+          <>
+            <span><span style={{ color: BRAIN_SEA_GREEN }}>●</span> sea green = bridge (dprsh + other)</span>
+            <span><span style={{ color: BRAIN_SAD_BLUE }}>●</span> blue = only in dprsh</span>
+          </>
+        )}
       </div>
     </div>
   );

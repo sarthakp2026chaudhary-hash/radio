@@ -7,21 +7,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { KnowledgeGraph } from "@/components/admin/KnowledgeGraph";
+import { BRAIN_SAD_BLUE, BRAIN_SEA_GREEN } from "@/lib/brain-colors";
 
 const BEAM_FOLDER_NAME = "Beam me up, jesus.";
 const DPRSH_FOLDER_NAME = "dprsh1";
-const SAD_NODE = "#2E8B57"; // sea green — the sad (dprsh) songs, distinct from Beam's mint
-const SAD_EDGE = "#5C82B0"; // blue — their threads
-
-interface GraphNode {
-  id: string;
-  type: string;
-}
 
 export default function Graph4Page() {
   const router = useRouter();
   const [endpoint, setEndpoint] = useState<string | null>(null);
-  const [highlight, setHighlight] = useState<string[] | null>(null);
+  const [dprshIds, setDprshIds] = useState<string[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,30 +36,31 @@ export default function Graph4Page() {
         return;
       }
 
-      const res = await fetch("/api/folders");
-      const data = await res.json();
-      const folders: { id: number; name: string }[] = data.folders || [];
-      const beam = folders.find((f) => f.name === BEAM_FOLDER_NAME);
-      const dprsh = folders.find((f) => f.name?.toLowerCase() === DPRSH_FOLDER_NAME);
+      const { data: folders } = (await supabase
+        .from("folders")
+        .select("id, name")
+        .in("name", [BEAM_FOLDER_NAME, DPRSH_FOLDER_NAME])) as { data: { id: number; name: string }[] | null };
+      const beam = (folders || []).find((f) => f.name === BEAM_FOLDER_NAME);
+      const dprsh = (folders || []).find((f) => f.name === DPRSH_FOLDER_NAME);
       if (!beam) {
         setErr("Couldn't find the “Beam me up, jesus.” folder.");
         return;
       }
 
-      // Highlight = the songs that live in the dprsh subtree (the sad ones).
-      let dprshSongIds: string[] = [];
+      let ids: string[] = [];
       if (dprsh) {
-        const g = await fetch(`/api/graph?folder=${dprsh.id}`).then((r) => r.json());
-        dprshSongIds = (g.nodes || [])
-          .filter((n: GraphNode) => n.type === "song")
-          .map((n: GraphNode) => n.id);
+        const { data: pls } = (await supabase
+          .from("playlists")
+          .select("id")
+          .eq("folder_id", dprsh.id)) as { data: { id: number }[] | null };
+        ids = (pls || []).map((p) => `p${p.id}`);
       }
-      setHighlight(dprshSongIds);
+      setDprshIds(ids);
       setEndpoint(`/api/graph?folder=${beam.id}`);
     })();
   }, [router]);
 
-  const ready = endpoint && highlight !== null;
+  const ready = endpoint && dprshIds !== null;
 
   return (
     <main className="h-screen flex flex-col bg-void">
@@ -73,9 +68,9 @@ export default function Graph4Page() {
         <div>
           <h1 className="text-lg font-semibold">Brain 4 · the sad ones</h1>
           <p className="text-xs text-text-tertiary">
-            All of “Beam me up, jesus.” stays green — songs that are also in a{" "}
-            <span style={{ color: SAD_NODE }}>dprsh</span> playlist turn sea green with{" "}
-            <span style={{ color: SAD_EDGE }}>blue</span> edges.
+            All of “Beam me up, jesus.” stays green — songs only in a{" "}
+            <span style={{ color: BRAIN_SAD_BLUE }}>dprsh</span> playlist go sad blue; songs that{" "}
+            <span style={{ color: BRAIN_SEA_GREEN }}>bridge</span> dprsh + another playlist go sea green.
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -89,12 +84,7 @@ export default function Graph4Page() {
         {err ? (
           <div className="flex items-center justify-center h-full text-text-secondary">{err}</div>
         ) : ready ? (
-          <KnowledgeGraph
-            endpoint={endpoint!}
-            songColor={SAD_NODE}
-            songEdgeColor={SAD_EDGE}
-            highlightSongIds={highlight!}
-          />
+          <KnowledgeGraph endpoint={endpoint!} dprshPlaylistIds={dprshIds!} />
         ) : (
           <div className="flex items-center justify-center h-full text-text-secondary">Loading…</div>
         )}
