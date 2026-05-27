@@ -313,6 +313,26 @@ export interface Database {
           role?: "listener" | "moderator";
         };
       };
+      channel_track_votes: {
+        Row: {
+          id: number;
+          channel_id: number;
+          track_id: number;
+          user_id: number;
+          created_at: string;
+        };
+        Insert: {
+          channel_id: number;
+          track_id: number;
+          user_id: number;
+          created_at?: string;
+        };
+        Update: {
+          channel_id?: number;
+          track_id?: number;
+          user_id?: number;
+        };
+      };
       channel_state: {
         Row: {
           id: number;

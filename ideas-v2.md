@@ -58,6 +58,21 @@ no-code brains from any song selection. Details in [docs/brain3/BRAIN3.md](docs/
 ## Update log
 _Raw running log of what's actually been built/decided. Newest first._
 
+### 2026-05-27 — search + R2 scope; Spotify OAuth deferred
+- **Search:** upgraded `GET /api/search` — title + artist name + catalog `spotify_id`/`spotify_uri`
+  match; rich track payload (`artists[]`, `has_audio`, `playlist_count`). Admin search in layout
+  header + library + channel control; listener "Request a song" panel on `/radio/[slug]`.
+- **Channel votes:** `channel_track_votes` table + `GET/POST/DELETE /api/channels/[slug]/votes`
+  (replaces legacy folder-scoped `/api/votes` for per-channel requests). Host sees ranked
+  listener requests on channel admin page.
+- **R2 scoped:** three ingestion paths documented — admin upload (`/api/tracks/upload`), seed
+  pipeline (`scripts/seed/upload-r2.ts`), batch attach (`attach-batch.mjs`). R2 env vars added
+  to `.env.example`; ops script `scripts/seed/verify-r2.mjs`.
+- **Streaming:** `src/lib/sources/resolve-playback.ts` adapter designed; R2-only broadcast.
+- **Spotify OAuth + Brain import:** deferred to next phase.
+- **Pending:** Rock/Faithless import; `channel_tracks` decoupling; Brain 4 artist coloring;
+  BRAINS config registry; re-download + attach audio for "Pas de Deux".
+
 ### 2026-05-26 — audio batch, 4 channels, app fixes, brains-as-genre
 - **Bulk audio (44 files):** `scripts/seed/attach-batch.mjs` (dedup `--dry-run` first).
   2 already had audio, 10 attached to existing text-tracks, 32 created (#740–#771), **no

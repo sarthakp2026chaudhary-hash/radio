@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminGlobalSearch } from "@/components/search/AdminGlobalSearch";
 
 interface User {
   id: number;
@@ -63,21 +64,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Mobile top bar — hidden on md+ where the sidebar is always visible */}
         <header
-          className="md:hidden sticky top-0 z-30 flex items-center gap-3 px-4 h-14 border-b border-surface-3"
+          className="md:hidden sticky top-0 z-30 flex flex-col gap-2 px-4 py-2 border-b border-surface-3"
           style={{ background: "var(--surface-1)" }}
         >
-          <button
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open menu"
-            className="p-1 -ml-1 text-text-secondary hover:text-text-primary"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            </svg>
-          </button>
-          <span className="font-semibold text-text-primary" style={{ fontFamily: "var(--font-playfair)" }}>
-            Radio Admin
-          </span>
+          <div className="flex items-center gap-3 h-10">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open menu"
+              className="p-1 -ml-1 text-text-secondary hover:text-text-primary"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+              </svg>
+            </button>
+            <span className="font-semibold text-text-primary" style={{ fontFamily: "var(--font-playfair)" }}>
+              Radio Admin
+            </span>
+          </div>
+          <AdminGlobalSearch />
+        </header>
+        {/* Desktop search bar */}
+        <header
+          className="hidden md:flex sticky top-0 z-20 items-center gap-4 px-6 h-14 border-b border-surface-3"
+          style={{ background: "var(--surface-1)" }}
+        >
+          <AdminGlobalSearch />
         </header>
         <main className="flex-1 overflow-auto">{children}</main>
       </div>

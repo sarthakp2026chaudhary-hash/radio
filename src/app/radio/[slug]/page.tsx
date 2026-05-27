@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { SongSearch } from "@/components/search/SongSearch";
 
 interface LoopTrack {
   id: number;
@@ -51,6 +52,8 @@ export default function ChannelLoopPage() {
   const [tunedIn, setTunedIn] = useState(false);
   const [playingIndex, setPlayingIndex] = useState(0);
   const [metaOpen, setMetaOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [requestToast, setRequestToast] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const tracksRef = useRef<LoopTrack[]>([]);
@@ -308,7 +311,50 @@ export default function ChannelLoopPage() {
           </button>
         )}
         {!anyAudio && <p className="mt-7 text-xs text-text-muted">No audio on this loop yet.</p>}
+
+        <button
+          type="button"
+          onClick={() => setSearchOpen((v) => !v)}
+          className="mt-5 flex items-center gap-2 px-4 py-2 rounded-full text-sm text-text-secondary transition-colors hover:text-text-primary"
+          style={{ border: "1px solid var(--surface-3)", background: "var(--surface-1)" }}
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+          Request a song
+        </button>
+
+        {requestToast && (
+          <p className="mt-2 text-xs text-ember">{requestToast}</p>
+        )}
       </div>
+
+      {searchOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60" onClick={() => setSearchOpen(false)}>
+          <div
+            className="w-full max-w-md rounded-2xl p-5"
+            style={{ background: "var(--surface-1)", border: "1px solid var(--surface-3)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-text-primary">Request a song</h2>
+              <button type="button" onClick={() => setSearchOpen(false)} className="text-text-muted hover:text-text-primary">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <SongSearch
+              channelSlug={slug}
+              autoFocus
+              onRequest={(track) => {
+                setRequestToast(`"${track.title}" request updated`);
+                setTimeout(() => setRequestToast(null), 2500);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </main>
   );
 }

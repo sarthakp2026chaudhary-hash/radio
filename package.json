@@ -13,6 +13,7 @@
     "seed:upload": "npx tsx scripts/seed/upload-r2.ts",
     "seed": "npx tsx scripts/seed/index.ts",
     "seed:verify": "npx tsx scripts/seed/verify.ts",
+    "seed:verify-r2": "node scripts/seed/verify-r2.mjs",
     "export": "npx tsx scripts/export/export-to-yaml.ts"
   },
   "dependencies": {

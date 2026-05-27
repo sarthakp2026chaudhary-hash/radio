@@ -2,9 +2,33 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/supabase/queries";
 import { DEFAULT_TRACK_DURATION_MS } from "@/lib/constants";
+import { searchTracks } from "@/lib/search/search-tracks";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = await createClient();
+  const q = request.nextUrl.searchParams.get("q")?.trim();
+  const limit = Math.min(parseInt(request.nextUrl.searchParams.get("limit") || "50"), 100);
+
+  if (q && q.length >= 2) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const hasAudioParam = request.nextUrl.searchParams.get("has_audio");
+    const hasAudio =
+      hasAudioParam === "1" || hasAudioParam === "true"
+        ? true
+        : hasAudioParam === "0" || hasAudioParam === "false"
+          ? false
+          : undefined;
+
+    const tracks = await searchTracks(supabase, q, { limit, hasAudio });
+    return NextResponse.json({ tracks });
+  }
+
   const { data: tracks, error } = await db.tracks.list(supabase);
 
   if (error) {

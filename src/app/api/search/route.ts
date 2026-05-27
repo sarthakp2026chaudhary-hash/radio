@@ -1,19 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-
-interface TrackRow {
-  id: number;
-  title: string;
-  duration_ms: number;
-  cover_url: string | null;
-  artists: { id: number; name: string } | null;
-}
-
-interface PlaylistRow {
-  id: number;
-  name: string;
-  playlist_tracks: { track_id: number }[];
-}
+import { searchTracks } from "@/lib/search/search-tracks";
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -28,26 +15,28 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const query = url.searchParams.get("q")?.trim();
   const type = url.searchParams.get("type") || "all";
-  const limit = parseInt(url.searchParams.get("limit") || "20");
+  const limit = Math.min(parseInt(url.searchParams.get("limit") || "20"), 50);
+  const hasAudioParam = url.searchParams.get("has_audio");
 
   if (!query || query.length < 2) {
     return NextResponse.json({ error: "Query must be at least 2 characters" }, { status: 400 });
   }
 
+  const hasAudio =
+    hasAudioParam === "1" || hasAudioParam === "true"
+      ? true
+      : hasAudioParam === "0" || hasAudioParam === "false"
+        ? false
+        : undefined;
+
   const results: {
-    tracks?: TrackRow[];
-    artists?: { id: number; name: string; track_count?: number }[];
-    playlists?: { id: number; name: string; track_count?: number }[];
+    tracks?: Awaited<ReturnType<typeof searchTracks>>;
+    artists?: { id: number; name: string }[];
+    playlists?: { id: number; name: string }[];
   } = {};
 
   if (type === "all" || type === "tracks") {
-    const { data: tracksData } = await supabase
-      .from("tracks")
-      .select("id, title, duration_ms, cover_url, artists:artist_id(id, name)")
-      .ilike("title", `%${query}%`)
-      .limit(limit);
-
-    results.tracks = (tracksData || []) as TrackRow[];
+    results.tracks = await searchTracks(supabase, query, { limit, hasAudio });
   }
 
   if (type === "all" || type === "artists") {
@@ -55,9 +44,10 @@ export async function GET(request: NextRequest) {
       .from("artists")
       .select("id, name")
       .ilike("name", `%${query}%`)
+      .order("name")
       .limit(limit);
 
-    results.artists = (artistsData || []) as { id: number; name: string }[];
+    results.artists = artistsData ?? [];
   }
 
   if (type === "all" || type === "playlists") {
@@ -65,9 +55,10 @@ export async function GET(request: NextRequest) {
       .from("playlists")
       .select("id, name")
       .ilike("name", `%${query}%`)
+      .order("name")
       .limit(limit);
 
-    results.playlists = (playlistsData || []) as { id: number; name: string }[];
+    results.playlists = playlistsData ?? [];
   }
 
   return NextResponse.json(results);
@@ -99,7 +90,7 @@ export async function POST(request: NextRequest) {
     `)
     .eq("playlist_tracks.track_id", track_id);
 
-  const playlists = (playlistsData || []).map((p: any) => ({
+  const playlists = (playlistsData ?? []).map((p: { id: number; name: string }) => ({
     id: p.id,
     name: p.name,
   }));

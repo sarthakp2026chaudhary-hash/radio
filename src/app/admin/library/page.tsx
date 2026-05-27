@@ -9,7 +9,10 @@ import { ArtistForm } from "@/components/admin/ArtistForm";
 import { TrackUploader } from "@/components/admin/TrackUploader";
 import { TrackRow } from "@/components/admin/TrackRow";
 import { TrackEditModal } from "@/components/admin/TrackEditModal";
+import { SongSearch } from "@/components/search/SongSearch";
+import { SongActionsSheet } from "@/components/admin/SongActionsSheet";
 import type { Artist, Track } from "@/lib/supabase/types";
+import type { SearchTrackResult } from "@/lib/search/search-tracks";
 
 export default function LibraryPage() {
   const { artists, isLoading, fetchArtists, createArtist, deleteArtist, getArtistWithTracks } = useArtists();
@@ -20,6 +23,7 @@ export default function LibraryPage() {
   const [showCreateArtist, setShowCreateArtist] = useState(false);
   const [artistToDelete, setArtistToDelete] = useState<Artist | null>(null);
   const [trackToEdit, setTrackToEdit] = useState<Track | null>(null);
+  const [sheet, setSheet] = useState<{ id: number; title: string } | null>(null);
 
   const handleSelectArtist = useCallback(async (artist: Artist) => {
     if (selectedArtist?.id === artist.id) {
@@ -66,6 +70,22 @@ export default function LibraryPage() {
     handleUploadComplete();
   };
 
+  const handleSearchSelect = useCallback(
+    async (track: SearchTrackResult) => {
+      const primaryArtist = track.artists[0];
+      if (primaryArtist) {
+        const existing = artists.find((a) => a.id === primaryArtist.id);
+        if (existing) {
+          const artistWithTracks = await getArtistWithTracks(existing.id);
+          setSelectedArtist(artistWithTracks);
+          requestAnimationFrame(() => tracksRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+        }
+      }
+      setSheet({ id: track.id, title: track.title });
+    },
+    [artists, getArtistWithTracks]
+  );
+
   useEffect(() => {
     const successCount = uploads.filter((u) => u.status === "success").length;
     if (successCount > 0) {
@@ -92,6 +112,13 @@ export default function LibraryPage() {
             </svg>
             Add Artist
           </Button>
+        </div>
+
+        <div className="mb-6">
+          <SongSearch
+            placeholder="Search songs across the library…"
+            onManagePlaylists={handleSearchSelect}
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -259,6 +286,8 @@ export default function LibraryPage() {
         onClose={() => setTrackToEdit(null)}
         onSave={handleUploadComplete}
       />
+
+      {sheet && <SongActionsSheet trackId={sheet.id} trackTitle={sheet.title} onClose={() => setSheet(null)} />}
     </div>
   );
 }

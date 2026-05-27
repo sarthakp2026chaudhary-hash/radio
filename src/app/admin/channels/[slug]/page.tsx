@@ -9,6 +9,9 @@ import { QueueManager } from "@/components/admin/QueueManager";
 import { QueueJournal } from "@/components/admin/QueueJournal";
 import { ScheduleEditor } from "@/components/admin/ScheduleEditor";
 import { LiveIndicator } from "@/components/radio/LiveIndicator";
+import { SongSearch } from "@/components/search/SongSearch";
+import { SongRequestsPanel } from "@/components/admin/SongRequestsPanel";
+import { SongActionsSheet } from "@/components/admin/SongActionsSheet";
 import { createClient } from "@/lib/supabase/client";
 import { formatDuration, formatTime } from "@/lib/utils";
 import type { Track, Artist, RepeatMode, ChannelMember } from "@/lib/supabase/types";
@@ -76,6 +79,7 @@ export default function ChannelControlPage() {
   const [showAddMember, setShowAddMember] = useState(false);
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [sheet, setSheet] = useState<{ id: number; title: string } | null>(null);
 
   const channelIdRef = useRef<number | null>(null);
 
@@ -327,6 +331,14 @@ export default function ChannelControlPage() {
     }
   };
 
+  const handleAddToQueue = async (trackId: number, _title: string) => {
+    try {
+      await controlPlayback(slug, { action: "add_to_queue", track_id: trackId });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -541,6 +553,17 @@ export default function ChannelControlPage() {
           </div>
 
           <div className="space-y-6">
+            <div
+              className="rounded-2xl p-4"
+              style={{ background: "var(--surface-1)", border: "1px solid var(--surface-3)" }}
+            >
+              <h3 className="text-sm font-semibold text-text-primary mb-3">Search library</h3>
+              <SongSearch
+                onManagePlaylists={(t) => setSheet({ id: t.id, title: t.title })}
+                onAddToQueue={(t) => handleAddToQueue(t.id, t.title)}
+              />
+            </div>
+            <SongRequestsPanel channelSlug={slug} onAddToQueue={handleAddToQueue} />
             <QueueManager
               currentTrack={currentTrack}
               priorityQueue={priorityQueue}
@@ -763,6 +786,8 @@ export default function ChannelControlPage() {
           </div>
         </div>
       </Modal>
+
+      {sheet && <SongActionsSheet trackId={sheet.id} trackTitle={sheet.title} onClose={() => setSheet(null)} />}
     </div>
   );
 }
