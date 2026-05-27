@@ -18,6 +18,28 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Channel not found" }, { status: 404 });
   }
 
+  // A private channel is readable only by the host or a member; otherwise it 404s
+  // (looks non-existent to friends) rather than leaking its loop.
+  if (!channel.is_public) {
+    const { data: { user } } = await supabase.auth.getUser();
+    let allowed = false;
+    if (user) {
+      allowed = await db.users.isHost(supabase, user.id);
+      if (!allowed) {
+        const { data: membership } = await supabase
+          .from("channel_members")
+          .select("id")
+          .eq("channel_id", channel.id)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        allowed = !!membership;
+      }
+    }
+    if (!allowed) {
+      return NextResponse.json({ error: "Channel not found" }, { status: 404 });
+    }
+  }
+
   const state = channel.channel_state;
 
   let loopTracks: any[] = [];

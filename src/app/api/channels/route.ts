@@ -6,14 +6,34 @@ import { slugify } from "@/lib/utils";
 
 export async function GET() {
   const supabase = await createClient();
-  const { data: channels, error } = await db.channels.list(supabase);
 
+  // Private channels are visible only to the host (or members). Anon/other users
+  // see public channels only — `is_public: false` is enforced here, not just in the UI.
+  const { data: { user } } = await supabase.auth.getUser();
+  let isHost = false;
+  const memberChannelIds = new Set<number>();
+  if (user) {
+    isHost = await db.users.isHost(supabase, user.id);
+    if (!isHost) {
+      const { data: memberships } = await supabase
+        .from("channel_members")
+        .select("channel_id")
+        .eq("user_id", user.id);
+      for (const m of memberships || []) memberChannelIds.add((m as { channel_id: number }).channel_id);
+    }
+  }
+
+  const { data: channels, error } = await db.channels.list(supabase);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  const visible = isHost
+    ? channels || []
+    : (channels || []).filter((c) => c.is_public || memberChannelIds.has(c.id));
+
   const channelsWithListeners = await Promise.all(
-    (channels || []).map(async (channel) => ({
+    visible.map(async (channel) => ({
       ...channel,
       listener_count: await db.channels.getListenerCount(supabase, channel.id),
     }))
