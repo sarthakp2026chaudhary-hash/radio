@@ -5,6 +5,19 @@ Precise record of bugs hit and how they were solved — symptom, cause, fix. New
 
 ---
 
+## E008 — A "private" channel was still visible to friends
+- **Symptom:** A channel created with `is_public: false` (Rakesh) still appeared in the
+  channel list for anonymous/non-host users, and `/api/channels/<slug>/loop` returned its
+  full data (HTTP 200). "Private" was set but not honored.
+- **Cause:** `GET /api/channels` filtered only `is_active`, never `is_public`/access; the
+  `/loop` route never checked access; and the `channels` table is anon-readable by RLS (so
+  the flag alone hides nothing).
+- **Fix:** `GET /api/channels` now returns private channels only to the **host** (or a
+  member); `GET /api/channels/[slug]/loop` **404s** a private channel unless the requester
+  is host/member. Access uses `db.users.isHost` + `channel_members`. Commit `5ae89fd`.
+- **Lesson:** `is_public` is just a column — enforce it in the API (list + per-channel
+  read). Don't rely on the UI or on RLS that's intentionally anon-readable.
+
 ## E007 — Listener stream plays one song then goes silent (had to refresh to rejoin)
 - **Symptom:** On the installed Android PWA, a channel played the current song, then went
   silent when the loop should advance; the listener had to refresh + re-tap "Tune in".
