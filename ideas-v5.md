@@ -87,5 +87,7 @@ See [docs/TREE_BUILDER.md §10](docs/TREE_BUILDER.md) for details + my picks:
    surface in the UI as "needs reconcile," handle one-by-one.
 
 ## Status
-Plan written; **no code touched**. Awaiting answers to the three questions before
-Phase 0.5 (env + lib wrapper + bundled tree.json).
+Scope expanded to a full **Workshop** (curation + rule-channels + Golden tree).
+**Full phased plan in [`docs/WORKSHOP_PLAN.md`](docs/WORKSHOP_PLAN.md)** (commit
+`cd829f0`) — self-contained for a fresh LLM, 10 phases, 9 locked decisions.
+Owner direction approved; the plan is the handoff artifact. Still no code.
