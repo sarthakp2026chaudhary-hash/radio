@@ -17,6 +17,9 @@ interface LoopData {
   loop_count: number;
   current_index: number;
   current_position_ms: number;
+  // When set, each track loops for this many seconds before the server advances
+  // to the next. The listener uses audio.loop and resyncs to current_index on poll.
+  rotation_seconds: number | null;
   current_track: LoopTrack | null;
   next_track: { id: number; title: string; artist: string | null } | null;
   tracks: LoopTrack[];
@@ -58,6 +61,9 @@ export default function ChannelLoopPage() {
   const silenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tunedInRef = useRef(false);
   const dataRef = useRef<LoopData | null>(null);
+  // When set, the current track loops natively via audio.loop=true; the listener
+  // resyncs to the server's current_index on poll (rotation tick = next track).
+  const rotationSecondsRef = useRef<number | null>(null);
 
   const fetchLoop = useCallback(async (): Promise<LoopData | null> => {
     try {
@@ -115,7 +121,7 @@ export default function ChannelLoopPage() {
       clearSilence();
 
       const t = tracks[idx];
-      audio.loop = tracks.length === 1 && !!t.file_url;
+      audio.loop = (rotationSecondsRef.current != null || tracks.length === 1) && !!t.file_url;
 
       if (t.file_url) {
         if (audio.src !== t.file_url) audio.src = t.file_url;
@@ -157,6 +163,7 @@ export default function ChannelLoopPage() {
   useEffect(() => {
     if (!data) return;
     dataRef.current = data;
+    rotationSecondsRef.current = data.rotation_seconds ?? null;
     if (!tunedInRef.current) return;
 
     const oldTracks = tracksRef.current;
@@ -165,6 +172,11 @@ export default function ChannelLoopPage() {
       oldTracks.map((t) => t.id).join(",") === newTracks.map((t) => t.id).join(",");
     if (sameComposition) {
       tracksRef.current = newTracks; // refresh fields (e.g. a file_url appeared) without restarting
+      // In rotation mode, the server advances current_index on its own clock; if
+      // we're playing a different index than it now says we should be, switch.
+      if (data.rotation_seconds && data.current_index !== indexRef.current) {
+        playAt(data.current_index, data.current_position_ms || 0);
+      }
       return;
     }
     const playingId = oldTracks[indexRef.current]?.id;

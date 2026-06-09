@@ -63,18 +63,32 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   let positionMs = 0;
 
   if (loopCount > 0 && state?.is_playing && state?.playback_started_at) {
-    const durations = effective.map((t) => t?.duration_ms || DEFAULT_TRACK_DURATION_MS);
-    const total = durations.reduce((a, b) => a + b, 0);
     const elapsed = Date.now() - new Date(state.playback_started_at).getTime();
-    if (total > 0) {
-      let loopPos = ((elapsed % total) + total) % total;
-      for (let i = 0; i < loopCount; i++) {
-        if (loopPos < durations[i]) {
-          currentIdx = i;
-          positionMs = loopPos;
-          break;
+    const rotationSeconds = (state as { rotation_seconds?: number | null }).rotation_seconds;
+
+    if (rotationSeconds && rotationSeconds > 0) {
+      // Rotation mode: each effective track plays for rotation_seconds, then we
+      // advance to the next track. The track itself loops within that window via
+      // audio.loop on the client.
+      const rotationMs = rotationSeconds * 1000;
+      const rotIdx = Math.floor(elapsed / rotationMs) % loopCount;
+      const inRotationMs = ((elapsed % rotationMs) + rotationMs) % rotationMs;
+      const trackDurationMs = effective[rotIdx]?.duration_ms || DEFAULT_TRACK_DURATION_MS;
+      currentIdx = rotIdx;
+      positionMs = inRotationMs % trackDurationMs;
+    } else {
+      const durations = effective.map((t) => t?.duration_ms || DEFAULT_TRACK_DURATION_MS);
+      const total = durations.reduce((a, b) => a + b, 0);
+      if (total > 0) {
+        let loopPos = ((elapsed % total) + total) % total;
+        for (let i = 0; i < loopCount; i++) {
+          if (loopPos < durations[i]) {
+            currentIdx = i;
+            positionMs = loopPos;
+            break;
+          }
+          loopPos -= durations[i];
         }
-        loopPos -= durations[i];
       }
     }
   }
@@ -104,6 +118,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     loop_count: loopCount,
     current_index: currentIdx,
     current_position_ms: positionMs,
+    // When set, each track in the loop plays for this many seconds before advancing.
+    // The listener uses this to set audio.loop=true so the current track repeats
+    // within the window, and to detect when the server has rotated to the next track.
+    rotation_seconds: (state as { rotation_seconds?: number | null })?.rotation_seconds ?? null,
     // current_track is exposed for optional audio playback; the listener UI decides
     // what (if anything) to display about it.
     current_track: trackCard(current),
